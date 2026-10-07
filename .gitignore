@@ -1,4 +1,5 @@
 # Added by me
+.DS_Store
 CLAUDE.md
 wandb/
 outputs/
