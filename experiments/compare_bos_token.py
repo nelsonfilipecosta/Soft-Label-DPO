@@ -1,9 +1,9 @@
 """Compare outputs of the OLMo 2 1B SFT model with and without the BOS token.
 
-The model card on Hugging Face (https://huggingface.co/allenai/OLMo-2-0425-1B-SFT) says that this model
-"does NOT have the BOS token before the rest". However, the chat template shipped with the model does
-start with the BOS token. To settle this discrepancy, this script compares the two variants on five
-different prompts:
+The model card on Hugging Face (https://huggingface.co/allenai/OLMo-2-0425-1B-SFT) says the chat template
+"does NOT have the BOS token before the rest". However, the chat template shipped with the tokenizer does
+start with the BOS token, so every prompt it builds begins with `<|endoftext|>`. To settle this discrepancy,
+this script compares the two variants on five different prompts:
 
 - With the chat template as shipped (which starts with <|endoftext|>)
 - With the leading <|endoftext|> removed, as the model card describes
@@ -53,6 +53,7 @@ def generate(model, tokenizer, inputs) -> str:
     """Generate a response from the model and return the decoded answer only."""
     inputs = inputs.to(model.device)
     with torch.no_grad():
+        # generate with greedy decoding (do_sample=False) to keep the outputs deterministic
         output = model.generate(**inputs, do_sample=False, max_new_tokens=256)
     # return only the answer (generate returns prompt and answer)
     new_tokens = output[0, inputs["input_ids"].shape[1]:]
