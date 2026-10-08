@@ -38,4 +38,5 @@ save_strategy: "no"
 
 # Environment
 env:
+  WANDB_PROJECT: soft-label-dpo # unused while `report_to` is set to `none`
   HF_DEACTIVATE_ASYNC_LOAD: "1"  # parallel weight loading crashes on macOS once `datasets` is imported
