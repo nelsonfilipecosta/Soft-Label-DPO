@@ -6,7 +6,7 @@
 # Model
 model_name_or_path: trl-internal-testing/tiny-Qwen2ForCausalLM-2.5
 model_init_kwargs:
-  dtype: float32  # the M1 GPU has no bf16 (MacBook Pro (13-inch, 2020) with Apple M1 chip)
+  dtype: float32  # full precision for the CPU run since the Apple M1 chip has no native bf16
 
 # Data
 dataset_name: trl-lib/ultrafeedback_binarized
@@ -26,6 +26,7 @@ lr_scheduler_type: constant
 max_length: 1024
 gradient_checkpointing: true
 bf16: false
+use_cpu: true # the GPU on Apple M1 chip computes wrong losses and gradients once batches are long
 seed: 42
 
 # Logging and saving
