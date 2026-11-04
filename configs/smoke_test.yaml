@@ -1,7 +1,6 @@
 # Smoke test
 #
 # 10 DPO steps on TRL's quick-start dataset to check the training pipeline works end to end.
-# The objective is to ensure the first logged step has loss ≈ 0.693 and margins ≈ 0.
 
 # Model
 model_name_or_path: allenai/OLMo-2-0425-1B-SFT
