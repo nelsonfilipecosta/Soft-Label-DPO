@@ -1,0 +1,42 @@
+# Local smoke test
+#
+# 3 DPO steps with a tiny random model to check the training pipeline works end to end locally.
+
+# Model
+model_name_or_path: trl-internal-testing/tiny-Qwen2ForCausalLM-2.5
+model_init_kwargs:
+  dtype: float32  # full precision for the CPU run since the Apple M1 chip has no native bf16
+
+# Data
+dataset_name: trl-lib/ultrafeedback_binarized
+dataset_train_split: train
+
+# DPO
+beta: 0.1
+loss_type: [sigmoid]  # standard DPO
+
+# Training
+max_train_samples: 6
+max_steps: 3
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 1
+learning_rate: 1.0e-6
+lr_scheduler_type: constant
+max_length: 1024
+gradient_checkpointing: true
+bf16: false
+use_cpu: true # the GPU on Apple M1 chip computes wrong losses and gradients once batches are long
+seed: 42
+
+# Logging and saving
+output_dir: outputs/smoke_test_local
+report_to: none  # keep local test runs out of the W&B project
+run_name: smoke-test-local # unused while `report_to` is set to `none`
+logging_steps: 1
+logging_first_step: true
+save_strategy: "no"
+
+# Environment
+env:
+  WANDB_PROJECT: soft-label-dpo # unused while `report_to` is set to `none`
+  HF_DEACTIVATE_ASYNC_LOAD: "1" # parallel weight loading crashes on macOS once `datasets` is imported

@@ -1,3 +1,9 @@
+# Added by me
+.DS_Store
+CLAUDE.md
+wandb/
+outputs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
