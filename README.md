@@ -40,4 +40,4 @@ Two short DPO runs check the training pipeline end to end before any real experi
 | Cost | $0.08 |
 
 - **Memory is tight at batch size 2.** At step 4, one 1.64 GB allocation failed and PyTorch retried it after freeing cached memory, so the run continued. That allocation is the float32 logits for 4 sequences (2 chosen, 2 rejected) × 1024 tokens × 100,352 vocabulary entries. Real runs need a larger GPU or gradient accumulation.
-- **Time estimate for real runs.** At this speed, one epoch over about 7,500 MultiPref training pairs takes about 85 minutes on this GPU, on top of about 5 minutes to set up a new pod.
+- **Time estimate for real runs.** MultiPref has 8,625 pairs with a majority ([MultiPref annotations](experiments/README.md#multipref-annotations)), so the 80% training split holds about 6,900 of them. At this speed, one epoch over them takes about 78 minutes on this GPU, on top of about 5 minutes to set up a new pod.
