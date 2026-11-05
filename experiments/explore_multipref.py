@@ -1,10 +1,10 @@
 """Explore the raw MultiPref annotations before building the training dataset.
 
-This script checks three things on the full train split (10,461 pairs) from the "default" configuration:
+This script checks three things on the full train split (10,461 pairs) of the "default" configuration:
 
-1. Confirm every pair has two crowdworker and two expert annotations.
-2. Compare the vote patterns against "tie_is_common" from the "human_overall_binarized" configuration
-3. Which labels "overall_confidence" takes.
+1. Confirm every preference pair has two crowdworker and two expert annotations.
+2. Compare the vote patterns against "tie_is_common" of the "human_overall_binarized" configuration.
+3. Count the different labels in "overall_confidence" across all annotations.
 
 Usage:
     uv run python experiments/explore_multipref.py
@@ -47,7 +47,6 @@ def main():
     for (num_crowdworkers, num_experts), num_pairs in sorted(annotation_counts.items()):
         print(f"-> {num_crowdworkers} crowdworker + {num_experts} expert: {num_pairs:,} of {len(raw):,} pairs ({num_pairs / len(raw):.1%})")
 
-
     # Check 2: vote patterns against "tie_is_common" from the binarized configuration
     tie_is_common_by_id = {pair["comparison_id"]: pair["tie_is_common"] for pair in binarized}
     pattern_counts = Counter()
@@ -75,6 +74,23 @@ def main():
         num_pairs = num_true + num_false
         print(f"-> {pattern:<7} {num_pairs:>6,} {num_pairs / len(raw):>7.1%} {num_true:>6,} {num_false:>6,}")
     print(f"-> {num_not_found:,} of the {len(raw):,} pairs not found in the binarized configuration")
+
+
+    # Check 3: count the different labels in "overall_confidence" across all annotations
+    confidence_counts = Counter()
+    for pair in raw:
+        annotations = (pair["normal_worker_annotations"] or []) + (pair["expert_worker_annotations"] or [])
+        for annotation in annotations:
+            confidence_counts[annotation["overall_confidence"]] += 1
+
+    num_annotations = sum(confidence_counts.values())
+    print()
+    print("Check 3")
+    print("Count of different labels in 'overall_confidence':")
+    # `most_common` sorts by count, so the labels don't need to be known in advance
+    # `!r` prints them with quotes, so an empty label ('') or a missing one (None) stands out
+    for label, num_labels in confidence_counts.most_common():
+        print(f"-> {label!r}: {num_labels:,} of {num_annotations:,} annotations ({num_labels / num_annotations:.1%})")
 
 
 if __name__ == "__main__":
