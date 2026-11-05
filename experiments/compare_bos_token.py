@@ -2,13 +2,16 @@
 
 The model card on Hugging Face (https://huggingface.co/allenai/OLMo-2-0425-1B-SFT) says the chat template
 "does NOT have the BOS token before the rest". However, the chat template shipped with the tokenizer does
-start with the BOS token, so every prompt it builds begins with `<|endoftext|>`. To settle this discrepancy,
+start with the BOS token, so every prompt it builds begins with <|endoftext|>. To settle this discrepancy,
 this script compares the two variants on five different prompts:
 
 - With the chat template as shipped (which starts with <|endoftext|>)
 - With the leading <|endoftext|> removed, as the model card describes
 
 If the outputs are of the same quality, keep the chat template as it is and note the discrepancy.
+
+Usage:
+    uv run python experiments/compare_bos_token.py
 """
 
 
