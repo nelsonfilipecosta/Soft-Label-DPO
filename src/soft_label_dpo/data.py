@@ -70,3 +70,10 @@ def vote_share(labels: list[str]) -> float:
     """Return p, the share of the votes for A, with a tie counting as half a vote for each answer."""
     _check_labels(labels)
     return statistics.fmean(VOTE_VALUES[label] for label in labels)
+
+
+def vote_variance(labels: list[str]) -> float:
+    """Return d, how much the annotators disagree, as the population variance of the mapped votes."""
+    _check_labels(labels)
+    # `pvariance` divides by the number of votes, while `variance` would divide by number of votes minus one
+    return statistics.pvariance(VOTE_VALUES[label] for label in labels)

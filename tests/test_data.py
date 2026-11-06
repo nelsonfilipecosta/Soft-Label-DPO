@@ -7,7 +7,7 @@ Usage:
 
 import pytest
 
-from soft_label_dpo.data import VOTE_LETTERS, VOTE_VALUES, _check_labels, vote_share
+from soft_label_dpo.data import VOTE_LETTERS, VOTE_VALUES, _check_labels, vote_share, vote_variance
 
 
 # One label per letter, so test votes can be written as patterns such as "AABT"
@@ -89,3 +89,27 @@ def test_vote_share_checks_the_labels():
     """An unknown label raises the `ValueError` from the help function and not a `KeyError` from the lookup."""
     with pytest.raises(ValueError):
         vote_share(["Tie", "tie"])
+
+
+@pytest.mark.parametrize("pattern, d", [(pattern, d) for pattern, _, d, _ in HAND_COMPUTED])
+def test_vote_variance_matches_the_hand_computed_d(pattern, d):
+    """d matches the value worked out by hand for each pattern."""
+    assert vote_variance(labels_from_pattern(pattern)) == pytest.approx(d)
+
+
+@pytest.mark.parametrize("pattern, d", [(pattern, d) for pattern, _, d, _ in HAND_COMPUTED])
+def test_vote_variance_stays_the_same_when_a_and_b_swap(pattern, d):
+    """Swapping A and B, such as AAAT into BBBT, leaves d unchanged."""
+    swapped = pattern.translate(str.maketrans("AB", "BA"))
+    assert vote_variance(labels_from_pattern(swapped)) == pytest.approx(d)
+
+
+def test_vote_variance_works_with_two_votes():
+    """Votes A and B give d = ((1-0.5)^2 + (0-0.5)^2)/2 = 0.25, the largest possible."""
+    assert vote_variance(["A-is-clearly-better", "B-is-clearly-better"]) == pytest.approx(0.25)
+
+
+def test_vote_variance_checks_the_labels():
+    """An unknown label raises the `ValueError` from the helper function and not a `KeyError` from the lookup."""
+    with pytest.raises(ValueError):
+        vote_variance(["Tie", "tie"])
