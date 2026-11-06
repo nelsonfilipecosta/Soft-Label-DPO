@@ -3,8 +3,8 @@
 This script checks three things on the full train split (10,461 pairs) of the "default" configuration:
 
 1. Confirm every preference pair has two crowdworker and two expert annotations.
-2. Compare the vote patterns against "tie_is_common" of the "human_overall_binarized" configuration.
-3. Count the different labels in "overall_confidence" across all annotations.
+2. Compare the vote patterns against `tie_is_common` of the "human_overall_binarized" configuration.
+3. Count the different labels in `overall_confidence` across all annotations.
 
 Usage:
     uv run python experiments/explore_multipref.py
@@ -17,7 +17,7 @@ from datasets import load_dataset
 
 DATASET_ID = "allenai/multipref"
 
-# Map the five-point scale to A, B or T (tie): "slightly" and "clearly" both count as a full vote
+# Map each `overall_pref` label to A, B or T (tie), with "slightly" and "clearly" counting the same
 VOTE_LETTERS = {
     "A-is-clearly-better": "A",
     "A-is-slightly-better": "A",
@@ -47,7 +47,7 @@ def main():
     for (num_crowdworkers, num_experts), num_pairs in sorted(annotation_counts.items()):
         print(f"-> {num_crowdworkers} crowdworker + {num_experts} expert: {num_pairs:,} of {len(raw):,} pairs ({num_pairs / len(raw):.1%})")
 
-    # Check 2: vote patterns against "tie_is_common" from the binarized configuration
+    # Check 2: vote patterns against `tie_is_common` from the binarized configuration
     tie_is_common_by_id = {pair["comparison_id"]: pair["tie_is_common"] for pair in binarized}
     pattern_counts = Counter()
     num_not_found = 0
@@ -76,7 +76,7 @@ def main():
     print(f"-> {num_not_found:,} of the {len(raw):,} pairs not found in the binarized configuration")
 
 
-    # Check 3: count the different labels in "overall_confidence" across all annotations
+    # Check 3: count the different labels in `overall_confidence` across all annotations
     confidence_counts = Counter()
     for pair in raw:
         annotations = (pair["normal_worker_annotations"] or []) + (pair["expert_worker_annotations"] or [])
