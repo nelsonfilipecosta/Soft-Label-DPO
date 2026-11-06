@@ -13,6 +13,8 @@ from soft_label_dpo.data import (
     VOTE_LETTERS,
     VOTE_VALUES,
     _check_labels,
+    agreement_bucket,
+    chosen_share,
     vote_pattern,
     vote_share,
     vote_variance,
@@ -151,3 +153,48 @@ def test_vote_pattern_checks_the_labels():
     """An unknown label raises the `ValueError` from the helper function and not a `KeyError` from the lookup."""
     with pytest.raises(ValueError):
         vote_pattern(["Tie", "tie"])
+
+
+@pytest.mark.parametrize("p, q", [(0.0, 1.0), (0.25, 0.75), (0.5, 0.5), (0.75, 0.75)])
+def test_chosen_share_is_the_share_of_the_majority_answer(p, q):
+    """q is the larger of the two vote shares, whichever answer has the majority."""
+    assert chosen_share(p) == q
+
+
+@pytest.mark.parametrize("p", [-0.125, 1.125])
+def test_chosen_share_rejects_a_p_outside_0_and_1(p):
+    """A p below 0 or above 1 raises an error."""
+    with pytest.raises(ValueError):
+        chosen_share(p)
+
+
+@pytest.mark.parametrize(
+    "p, bucket",
+    [
+        (0.0, "strong"),
+        (0.125, "strong"),
+        (0.25, "moderate"),
+        (0.375, "moderate"),
+        (0.5, "split"),
+        (0.625, "moderate"),
+        (0.75, "moderate"),
+        (0.875, "strong"),
+        (1.0, "strong"),
+    ],
+)
+def test_agreement_bucket_covers_every_p_from_four_votes(p, bucket):
+    """Each of the nine values that p can take with four votes lands in the right bucket."""
+    assert agreement_bucket(p) == bucket
+
+
+@pytest.mark.parametrize("pattern, bucket", [(pattern, bucket) for pattern, _, _, bucket in HAND_COMPUTED])
+def test_agreement_bucket_matches_the_hand_computed_bucket(pattern, bucket):
+    """The bucket of each pattern's p matches the bucket worked out by hand."""
+    assert agreement_bucket(vote_share(labels_from_pattern(pattern))) == bucket
+
+
+@pytest.mark.parametrize("p", [0.6, 0.8], ids=["between_split_and_moderate", "between_moderate_and_strong"])
+def test_agreement_bucket_rejects_a_p_between_buckets(p):
+    """A p in a gap between two buckets raises an error."""
+    with pytest.raises(ValueError):
+        agreement_bucket(p)

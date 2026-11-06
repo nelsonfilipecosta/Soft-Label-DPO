@@ -83,3 +83,32 @@ def vote_pattern(labels: list[str]) -> str:
     """Return the votes as sorted letters, such as "AABT", so the order of the annotators doesn't matter."""
     _check_labels(labels)
     return "".join(sorted(VOTE_LETTERS[label] for label in labels))
+
+
+def chosen_share(p: float) -> float:
+    """Return q = max(p, 1 - p), the vote share of the majority answer, or 0.5 if there is none."""
+    if not 0 <= p <= 1:
+        raise ValueError(f"Invalid p = {p}. Expected a value between 0 and 1.")
+    return max(p, 1 - p)
+
+
+def agreement_bucket(p: float) -> str:
+    """Return the agreement bucket of p: "strong", "moderate" or "split".
+
+    With q = max(p, 1 - p), the bucket is:
+
+    - strong if q >= 0.875 (p <= 0.125 or p >= 0.875)
+    - moderate if 0.625 <= q <= 0.75 (0.25 <= p <= 0.375 or 0.625 <= p <= 0.75)
+    - split if q = 0.5 (p = 0.5)
+    """
+    q = chosen_share(p)
+    if q >= 0.875:
+        return "strong"
+    if 0.625 <= q <= 0.75:
+        return "moderate"
+    if q == 0.5:
+        return "split"
+    raise ValueError(
+        f"No agreement bucket for p = {p}. "
+        "Expected q = max(p, 1 - p) >= 0.875, 0.625 <= q <= 0.75 or q = 0.5."
+    )
