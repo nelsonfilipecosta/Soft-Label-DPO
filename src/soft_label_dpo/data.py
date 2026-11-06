@@ -1,7 +1,7 @@
 """Turn the four human votes on each MultiPref pair into soft labels.
 
 Each pair in the "default" configuration of MultiPref has four votes on which of its two answers, A or B,
-is better. Two of the votes come from crowdworkers and two from experts. The "overall_pref" of each vote
+is better. Two of the votes come from crowdworkers and two from experts. The `overall_pref` of each vote
 is coded as A = 1, Tie (T) = 0.5 or B = 0, with "slightly better" and "clearly better" counting the same.
 
 From these numbers, each pair gets two values:
@@ -27,3 +27,22 @@ Each pair also gets an agreement bucket (strong, moderate or split) from p and a
 its votes as sorted letters, such as AABT. The functions that take a list of votes accept any number of
 them, so they also work on the crowdworker or expert votes alone.
 """
+
+
+# Map each `overall_pref` label to a number for p and d ("slightly" and "clearly" count the same)
+VOTE_VALUES = {
+    "A-is-clearly-better": 1.0,
+    "A-is-slightly-better": 1.0,
+    "Tie": 0.5,
+    "B-is-slightly-better": 0.0,
+    "B-is-clearly-better": 0.0,
+}
+
+# Map each `overall_pref` label to a letter for the vote pattern, such as "AABT"
+VOTE_LETTERS = {
+    "A-is-clearly-better": "A",
+    "A-is-slightly-better": "A",
+    "Tie": "T",
+    "B-is-slightly-better": "B",
+    "B-is-clearly-better": "B",
+}
