@@ -21,7 +21,7 @@ From these numbers, each pair gets two values:
   d(AAAB) = ((1-0.75)^2 + (1-0.75)^2 + (1-0.75)^2 + (0-0.75)^2)/4 = 0.1875
   d(AABB) = ((1-0.5)^2 + (1-0.5)^2 + (0-0.5)^2 + (0-0.5)^2)/4 = 0.25
   d(TTTT) = ((0.5-0.5)^2 + (0.5-0.5)^2 + (0.5-0.5)^2 + (0.5-0.5)^2)/4 = 0
-  d(BBBT) = ((0-0.125)^2 + (0-0.125)^2 + (0-0.125)^2 + (0.5-0.125)^2)/4 = 0.109375
+  d(BBBT) = ((0-0.125)^2 + (0-0.125)^2 + (0-0.125)^2 + (0.5-0.125)^2)/4 = 0.046875
 
 Each pair also gets an agreement bucket (strong, moderate or split) from p and a vote pattern, which is
 its votes as sorted letters, such as AABT. The functions that take a list of votes accept any number of
@@ -46,3 +46,18 @@ VOTE_LETTERS = {
     "B-is-slightly-better": "B",
     "B-is-clearly-better": "B",
 }
+
+
+def _check_labels(labels: list[str]) -> None:
+    """Raise a `ValueError` if `labels` is empty or holds a label that isn't on the `overall_pref` scale.
+
+    Every function that takes a list of votes calls this first, so a missing or unknown vote stops the
+    pipeline instead of silently changing p or d.
+    """
+    if not labels:
+        raise ValueError("Expected at least one vote.")
+    for label in labels:
+        # VOTE_VALUES and VOTE_LETTERS have the same labels, so checking VOTE_VALUES covers both
+        if label not in VOTE_VALUES:
+            # `!r` prints the label with quotes, so an empty label ('') or a missing one (None) stands out
+            raise ValueError(f"Unknown vote label {label!r}. Expected one of {list(VOTE_VALUES)}.")
