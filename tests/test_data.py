@@ -5,9 +5,18 @@ Usage:
 """
 
 
+import itertools
+
 import pytest
 
-from soft_label_dpo.data import VOTE_LETTERS, VOTE_VALUES, _check_labels, vote_share, vote_variance
+from soft_label_dpo.data import (
+    VOTE_LETTERS,
+    VOTE_VALUES,
+    _check_labels,
+    vote_pattern,
+    vote_share,
+    vote_variance,
+)
 
 
 # One label per letter, so test votes can be written as patterns such as "AABT"
@@ -113,3 +122,32 @@ def test_vote_variance_checks_the_labels():
     """An unknown label raises the `ValueError` from the helper function and not a `KeyError` from the lookup."""
     with pytest.raises(ValueError):
         vote_variance(["Tie", "tie"])
+
+
+@pytest.mark.parametrize("pattern", [pattern for pattern, _, _, _ in HAND_COMPUTED])
+def test_vote_pattern_matches_the_hand_computed_pattern(pattern):
+    """The votes of each pattern give the same pattern back."""
+    assert vote_pattern(labels_from_pattern(pattern)) == pattern
+
+
+def test_vote_pattern_ignores_the_order_of_the_votes():
+    """Every order of the votes AABT gives the same pattern."""
+    for order in itertools.permutations(labels_from_pattern("AABT")):
+        assert vote_pattern(list(order)) == "AABT"
+
+
+def test_vote_pattern_works_with_two_votes():
+    """Votes Tie and A give the pattern AT."""
+    assert vote_pattern(["Tie", "A-is-clearly-better"]) == "AT"
+
+
+def test_vote_pattern_counts_slightly_and_clearly_the_same():
+    """A "slightly better" vote gets the same letter as a "clearly better" one."""
+    assert vote_pattern(["A-is-slightly-better", "A-is-clearly-better"]) == "AA"
+    assert vote_pattern(["B-is-slightly-better", "B-is-clearly-better"]) == "BB"
+
+
+def test_vote_pattern_checks_the_labels():
+    """An unknown label raises the `ValueError` from the helper function and not a `KeyError` from the lookup."""
+    with pytest.raises(ValueError):
+        vote_pattern(["Tie", "tie"])

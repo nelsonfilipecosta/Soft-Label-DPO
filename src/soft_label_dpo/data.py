@@ -77,3 +77,9 @@ def vote_variance(labels: list[str]) -> float:
     _check_labels(labels)
     # `pvariance` divides by the number of votes, while `variance` would divide by number of votes minus one
     return statistics.pvariance(VOTE_VALUES[label] for label in labels)
+
+
+def vote_pattern(labels: list[str]) -> str:
+    """Return the votes as sorted letters, such as "AABT", so the order of the annotators doesn't matter."""
+    _check_labels(labels)
+    return "".join(sorted(VOTE_LETTERS[label] for label in labels))
