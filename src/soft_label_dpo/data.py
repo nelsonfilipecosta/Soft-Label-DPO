@@ -29,6 +29,9 @@ them, so they also work on the crowdworker or expert votes alone.
 """
 
 
+import statistics
+
+
 # Map each `overall_pref` label to a number for p and d ("slightly" and "clearly" count the same)
 VOTE_VALUES = {
     "A-is-clearly-better": 1.0,
@@ -61,3 +64,9 @@ def _check_labels(labels: list[str]) -> None:
         if label not in VOTE_VALUES:
             # `!r` prints the label with quotes, so an empty label ('') or a missing one (None) stands out
             raise ValueError(f"Unknown vote label {label!r}. Expected one of {list(VOTE_VALUES)}.")
+
+
+def vote_share(labels: list[str]) -> float:
+    """Return p, the share of the votes for A, with a tie counting as half a vote for each answer."""
+    _check_labels(labels)
+    return statistics.fmean(VOTE_VALUES[label] for label in labels)
