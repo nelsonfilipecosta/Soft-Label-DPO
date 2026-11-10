@@ -143,3 +143,14 @@ def vote_columns(pair: dict) -> dict:
         "crowd_votes": crowd_votes,
         "expert_votes": expert_votes,
     }
+
+
+def a_is_chosen(p: float) -> bool:
+    """Return `True` if A is the chosen answer (p > 0.5) and `False` otherwise.
+
+    Split pairs (p = 0.5) have no majority, so A is chosen by convention. Swapping the two answers would
+    only flip the sign of the model's margin, which leaves the distance of its preference from 50/50 unchanged.
+    """
+    if not 0 <= p <= 1:
+        raise ValueError(f"Invalid p = {p}. Expected a value between 0 and 1.")
+    return p >= 0.5

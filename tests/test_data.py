@@ -13,6 +13,7 @@ from soft_label_dpo.data import (
     VOTE_LETTERS,
     VOTE_VALUES,
     _check_labels,
+    a_is_chosen,
     agreement_bucket,
     chosen_share,
     vote_columns,
@@ -243,3 +244,19 @@ def test_vote_columns_rejects_a_pair_without_two_votes_per_group(column, annotat
     with pytest.raises(ValueError) as error:
         vote_columns(pair)
     assert column in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "p, expected",
+    [(1.0, True), (0.75, True), (0.5, True), (0.25, False), (0.0, False)],
+)
+def test_a_is_chosen_follows_the_majority(p, expected):
+    """A is chosen when it has the majority, B when it doesn't and A by convention when there is none."""
+    assert a_is_chosen(p) is expected
+
+
+@pytest.mark.parametrize("p", [-0.125, 1.5])
+def test_a_is_chosen_rejects_a_p_outside_0_and_1(p):
+    """A p below 0 or above 1 raises an error."""
+    with pytest.raises(ValueError):
+        a_is_chosen(p)
