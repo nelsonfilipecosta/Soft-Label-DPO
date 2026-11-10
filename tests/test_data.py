@@ -16,6 +16,7 @@ from soft_label_dpo.data import (
     a_is_chosen,
     agreement_bucket,
     chosen_share,
+    orient_pair,
     vote_columns,
     vote_pattern,
     vote_share,
@@ -251,7 +252,7 @@ def test_vote_columns_rejects_a_pair_without_two_votes_per_group(column, annotat
     [(1.0, True), (0.75, True), (0.5, True), (0.25, False), (0.0, False)],
 )
 def test_a_is_chosen_follows_the_majority(p, expected):
-    """A is chosen when it has the majority, B when it doesn't and A by convention when there is none."""
+    """A is chosen when it has the majority, B when it has the majority and A by convention when there is none."""
     assert a_is_chosen(p) is expected
 
 
@@ -260,3 +261,68 @@ def test_a_is_chosen_rejects_a_p_outside_0_and_1(p):
     """A p below 0 or above 1 raises an error."""
     with pytest.raises(ValueError):
         a_is_chosen(p)
+
+
+@pytest.mark.parametrize(
+    "p, expected",
+    [
+        (
+            0.75,
+            {
+                "chosen_is_a": True,
+                "q": 0.75,
+                "chosen_completion": "Answer A",
+                "rejected_completion": "Answer B",
+                "chosen_model": "model-a",
+                "rejected_model": "model-b",
+            },
+        ),
+        (
+            0.25,
+            {
+                "chosen_is_a": False,
+                "q": 0.75,
+                "chosen_completion": "Answer B",
+                "rejected_completion": "Answer A",
+                "chosen_model": "model-b",
+                "rejected_model": "model-a",
+            },
+        ),
+        (
+            0.5,
+            {
+                "chosen_is_a": True,
+                "q": 0.5,
+                "chosen_completion": "Answer A",
+                "rejected_completion": "Answer B",
+                "chosen_model": "model-a",
+                "rejected_model": "model-b",
+            },
+        ),
+    ],
+    ids=["a_majority", "b_majority", "split"],
+)
+def test_orient_pair_puts_the_majority_answer_in_chosen(p, expected):
+    """The majority answer and its model go in the chosen columns and A when there is no majority."""
+    pair = {
+        "p": p,
+        "completion_a": "Answer A",
+        "completion_b": "Answer B",
+        "model_a": "model-a",
+        "model_b": "model-b",
+    }
+    assert orient_pair(pair) == expected
+
+
+def test_orient_pair_works_when_both_answers_come_from_the_same_model():
+    """The texts still go to the right side when both answers have the same model name."""
+    pair = {
+        "p": 0.25,
+        "completion_a": "Answer A",
+        "completion_b": "Answer B",
+        "model_a": "gpt-4",
+        "model_b": "gpt-4",
+    }
+    oriented = orient_pair(pair)
+    assert oriented["chosen_completion"] == "Answer B"
+    assert oriented["rejected_completion"] == "Answer A"

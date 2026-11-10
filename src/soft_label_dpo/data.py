@@ -146,7 +146,7 @@ def vote_columns(pair: dict) -> dict:
 
 
 def a_is_chosen(p: float) -> bool:
-    """Return `True` if A is the chosen answer (p > 0.5) and `False` otherwise.
+    """Return `True` if A is the chosen answer (p ≥ 0.5) and `False` otherwise.
 
     Split pairs (p = 0.5) have no majority, so A is chosen by convention. Swapping the two answers would
     only flip the sign of the model's margin, which leaves the distance of its preference from 50/50 unchanged.
@@ -154,3 +154,22 @@ def a_is_chosen(p: float) -> bool:
     if not 0 <= p <= 1:
         raise ValueError(f"Invalid p = {p}. Expected a value between 0 and 1.")
     return p >= 0.5
+
+
+def orient_pair(pair: dict) -> dict:
+    """Return the chosen and rejected columns of one pair, so they can be added to the dataset with `Dataset.map`.
+
+    The pair needs `p` from `vote_columns`. The answers and their models are swapped when B is chosen and
+    `q` is the vote share of the chosen answer. `chosen_is_a` records the side, so the original A and B can
+    always be found again.
+    """
+    p = pair["p"]
+    chosen, rejected = ("a", "b") if a_is_chosen(p) else ("b", "a")
+    return {
+        "chosen_is_a": chosen == "a",
+        "q": chosen_share(p),
+        "chosen_completion": pair[f"completion_{chosen}"],
+        "rejected_completion": pair[f"completion_{rejected}"],
+        "chosen_model": pair[f"model_{chosen}"],
+        "rejected_model": pair[f"model_{rejected}"],
+    }
