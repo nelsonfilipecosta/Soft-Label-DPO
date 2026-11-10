@@ -12,10 +12,9 @@ Usage:
 
 
 from collections import Counter
-from datasets import load_dataset
 
+from soft_label_dpo.data import load_multipref
 
-DATASET_ID = "allenai/multipref"
 
 # Map each `overall_pref` label to A, B or T (tie), with "slightly" and "clearly" counting the same
 VOTE_LETTERS = {
@@ -29,9 +28,9 @@ VOTE_LETTERS = {
 
 def main():
     # raw config: "default" (10,461 pairs, 4 annotations each)
-    raw = load_dataset(DATASET_ID, "default", split="train")
+    raw = load_multipref("default")
     # binarized config: "human_overall_binarized" (10,461 pairs, 1 majority label each)
-    binarized = load_dataset(DATASET_ID, "human_overall_binarized", split="train")
+    binarized = load_multipref("human_overall_binarized")
 
     # Check 1: number of annotations per pair
     annotation_counts = Counter()

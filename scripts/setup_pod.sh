@@ -14,6 +14,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKSPACE="${WORKSPACE:-/workspace}"  # volume disk: survives a pod stop, unlike the container disk
 MIN_UV_VERSION="0.11.24"
 MODEL_ID="allenai/OLMo-2-0425-1B-SFT"
+MODEL_REVISION="0d85a3d037876ce6ac7d4311d994400fc66ac27f"  # keep in sync with `revision` in configs/*.yaml
 
 step() { printf '\n==> %s\n' "$*"; }
 fail() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
@@ -87,9 +88,9 @@ wandb.login(verify=True)
 print("W&B key: ok")
 PY
 
-step "Downloading $MODEL_ID into $HF_HOME"
+step "Downloading $MODEL_ID at revision $MODEL_REVISION into $HF_HOME"
 
-uv run --no-sync python -c "from huggingface_hub import snapshot_download; print(snapshot_download('$MODEL_ID'))"
+uv run --no-sync python -c "from huggingface_hub import snapshot_download; print(snapshot_download('$MODEL_ID', revision='$MODEL_REVISION'))"
 
 step "Writing environment to ~/.bashrc"
 

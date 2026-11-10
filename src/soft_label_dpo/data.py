@@ -31,6 +31,13 @@ them, so they also work on the crowdworker or expert votes alone.
 
 import statistics
 
+from datasets import Dataset, load_dataset
+
+
+# MultiPref pinned to one revision of the dataset so every script reads the same votes
+
+MULTIPREF_ID = "allenai/multipref"
+MULTIPREF_REVISION = "12910233a0238a997ebe425656e9dfed7b0ff031"
 
 # Map each `overall_pref` label to a number for p and d ("slightly" and "clearly" count the same)
 VOTE_VALUES = {
@@ -49,6 +56,11 @@ VOTE_LETTERS = {
     "B-is-slightly-better": "B",
     "B-is-clearly-better": "B",
 }
+
+
+def load_multipref(config: str) -> Dataset:
+    """Return the train split of a MultiPref configuration, such as "default", at `MULTIPREF_REVISION`."""
+    return load_dataset(MULTIPREF_ID, config, split="train", revision=MULTIPREF_REVISION)
 
 
 def _check_labels(labels: list[str]) -> None:

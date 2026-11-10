@@ -22,6 +22,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 MODEL_ID = "allenai/OLMo-2-0425-1B-SFT"
+MODEL_REVISION = "0d85a3d037876ce6ac7d4311d994400fc66ac27f"  # same as `revision` in configs/smoke_test.yaml
 OUTPUT_PATH = Path("experiments/compare_bos_token_output.md")
 
 PROMPTS = {
@@ -66,8 +67,8 @@ def generate(model, tokenizer, inputs) -> str:
 def main():
     device = pick_device()
     print(f"Loading {MODEL_ID} in float32 on {device}")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=torch.float32).to(device).eval()
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=MODEL_REVISION)
+    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, revision=MODEL_REVISION, dtype=torch.float32).to(device).eval()
     print(f"{model.num_parameters() / 1e9:.2f}B parameters")
 
     report = [f"{MODEL_ID}: greedy decoding with float32 on {device}.\n"]

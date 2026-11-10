@@ -15,18 +15,11 @@ Usage:
 
 from collections import Counter, defaultdict
 
-from datasets import load_dataset
-
-from soft_label_dpo.data import vote_columns
-
-
-DATASET_ID = "allenai/multipref"
-# Same revision as the MultiPref annotations experiment, so the counts can be compared
-DATASET_REVISION = "12910233a0238a997ebe425656e9dfed7b0ff031"
+from soft_label_dpo.data import load_multipref, vote_columns
 
 
 def main():
-    raw = load_dataset(DATASET_ID, "default", split="train", revision=DATASET_REVISION)
+    raw = load_multipref("default")
     pairs = raw.map(vote_columns)
 
     # Collect the buckets of each prompt's pairs

@@ -27,7 +27,7 @@ Does the leading `{{ bos_token }}` change the model's answers?
 
 ### Setup
 
-- Model: `allenai/OLMo-2-0425-1B-SFT`.
+- Model: `allenai/OLMo-2-0425-1B-SFT` at revision `0d85a3d037876ce6ac7d4311d994400fc66ac27f`.
 - Five prompts for different skills: factual, format following, reasoning, opinion and refusal.
 - Each prompt run twice: with the template as shipped and with the leading `<|endoftext|>` removed.
 - Greedy decoding (`do_sample=False`) with at most 256 new tokens.
@@ -61,7 +61,7 @@ The soft labels need the four human votes of every pair, which only the `default
 
 ### Setup
 
-- Dataset: `allenai/multipref` at revision `12910233a0238a997ebe425656e9dfed7b0ff031` (downloaded on 2026-11-05), the `train` split of the `default` and `human_overall_binarized` configurations (10,461 pairs each), matched by `comparison_id`.
+- Dataset: `allenai/multipref` at revision `12910233a0238a997ebe425656e9dfed7b0ff031`, the `train` split of the `default` and `human_overall_binarized` configurations (10,461 pairs each), matched by `comparison_id`.
 - Each annotator's `overall_pref` mapped to A, B or T (tie). "Slightly" and "clearly" both count as a full vote.
 - A pair's vote pattern is its four votes in sorted order, such as BBTT, so the order of the annotators doesn't matter.
 - p is the share of the four votes for A, with ties counting half.

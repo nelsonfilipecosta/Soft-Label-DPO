@@ -6,6 +6,7 @@
 model_name_or_path: allenai/OLMo-2-0425-1B-SFT
 model_init_kwargs:
   dtype: bfloat16  # TRL loads in float32 when this is unset
+  revision: 0d85a3d037876ce6ac7d4311d994400fc66ac27f  # TRL also uses it for the tokenizer and the reference model
 
 # Data
 dataset_name: trl-lib/ultrafeedback_binarized
