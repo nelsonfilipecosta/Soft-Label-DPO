@@ -60,9 +60,9 @@ def _check_labels(labels: list[str]) -> None:
     if not labels:
         raise ValueError("Expected at least one vote.")
     for label in labels:
-        # VOTE_VALUES and VOTE_LETTERS have the same labels, so checking VOTE_VALUES covers both
+        # `VOTE_VALUES` and `VOTE_LETTERS` have the same labels, so checking `VOTE_VALUES` covers both
         if label not in VOTE_VALUES:
-            # `!r` prints the label with quotes, so an empty label ('') or a missing one (None) stands out
+            # `!r` prints the label with quotes, so an empty label (`''`) or a missing one (`None`) stands out
             raise ValueError(f"Unknown vote label {label!r}. Expected one of {list(VOTE_VALUES)}.")
 
 
@@ -86,7 +86,7 @@ def vote_pattern(labels: list[str]) -> str:
 
 
 def chosen_share(p: float) -> float:
-    """Return q = max(p, 1 - p), the vote share of the majority answer, or 0.5 if there is none."""
+    """Return q = max(p, 1 - p), the vote share of the majority answer or 0.5 if there is none."""
     if not 0 <= p <= 1:
         raise ValueError(f"Invalid p = {p}. Expected a value between 0 and 1.")
     return max(p, 1 - p)
@@ -112,3 +112,34 @@ def agreement_bucket(p: float) -> str:
         f"No agreement bucket for p = {p}. "
         "Expected q = max(p, 1 - p) >= 0.875, 0.625 <= q <= 0.75 or q = 0.5."
     )
+
+
+def _annotation_labels(pair: dict, column: str) -> list[str]:
+    """Return the `overall_pref` labels in one annotation column of a pair, which must hold exactly two."""
+    annotations = pair[column]
+    # A missing list (`None`) is an error and not something to count
+    count = 0 if annotations is None else len(annotations)
+    if count != 2:
+        raise ValueError(f"Expected 2 annotations in {column}, but got {count}.")
+    return [annotation["overall_pref"] for annotation in annotations]
+
+
+def vote_columns(pair: dict) -> dict:
+    """Return the vote columns of one MultiPref pair, so they can be added to the dataset with `Dataset.map`.
+
+    `p`, `d`, `bucket` and `vote_pattern` come from all four votes. `crowd_votes` and `expert_votes` keep the
+    `overall_pref` labels of each group, including "slightly" or "clearly", so the votes of crowdworkers
+    and experts can also be studied apart.
+    """
+    crowd_votes = _annotation_labels(pair, "normal_worker_annotations")
+    expert_votes = _annotation_labels(pair, "expert_worker_annotations")
+    votes = crowd_votes + expert_votes
+    p = vote_share(votes)
+    return {
+        "p": p,
+        "d": vote_variance(votes),
+        "bucket": agreement_bucket(p),
+        "vote_pattern": vote_pattern(votes),
+        "crowd_votes": crowd_votes,
+        "expert_votes": expert_votes,
+    }

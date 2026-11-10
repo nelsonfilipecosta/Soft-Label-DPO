@@ -15,6 +15,7 @@ from soft_label_dpo.data import (
     _check_labels,
     agreement_bucket,
     chosen_share,
+    vote_columns,
     vote_pattern,
     vote_share,
     vote_variance,
@@ -86,7 +87,7 @@ def test_vote_share_matches_the_hand_computed_p(pattern, p):
 
 
 def test_vote_share_works_with_two_votes():
-    """Votes A and Tie give p = (1 + 0.5) / 2 = 0.75."""
+    """Votes A and Tie give p = (1+0.5)/2 = 0.75."""
     assert vote_share(["A-is-clearly-better", "Tie"]) == 0.75
 
 
@@ -97,7 +98,7 @@ def test_vote_share_counts_slightly_and_clearly_the_same():
 
 
 def test_vote_share_checks_the_labels():
-    """An unknown label raises the `ValueError` from the help function and not a `KeyError` from the lookup."""
+    """An unknown label raises the `ValueError` from the helper function and not a `KeyError` from the lookup."""
     with pytest.raises(ValueError):
         vote_share(["Tie", "tie"])
 
@@ -198,3 +199,47 @@ def test_agreement_bucket_rejects_a_p_between_buckets(p):
     """A p in a gap between two buckets raises an error."""
     with pytest.raises(ValueError):
         agreement_bucket(p)
+
+
+def test_vote_columns_returns_the_columns_of_a_pair():
+    """Crowdworker votes A and Tie and expert votes B and A give the pattern AABT."""
+    pair = {
+        "normal_worker_annotations": [
+            {"overall_pref": "A-is-clearly-better"},
+            {"overall_pref": "Tie"},
+        ],
+        "expert_worker_annotations": [
+            {"overall_pref": "B-is-slightly-better"},
+            {"overall_pref": "A-is-slightly-better"},
+        ],
+    }
+    assert vote_columns(pair) == {
+        "p": 0.625,
+        "d": pytest.approx(0.171875),
+        "bucket": "moderate",
+        "vote_pattern": "AABT",
+        "crowd_votes": ["A-is-clearly-better", "Tie"],
+        "expert_votes": ["B-is-slightly-better", "A-is-slightly-better"],
+    }
+
+
+@pytest.mark.parametrize(
+    "column, annotations",
+    [
+        ("normal_worker_annotations", [{"overall_pref": "Tie"}]),
+        ("expert_worker_annotations", [{"overall_pref": "Tie"}]),
+        ("expert_worker_annotations", [{"overall_pref": "Tie"}] * 3),
+        ("expert_worker_annotations", None),
+    ],
+    ids=["one_crowdworker", "one_expert", "three_experts", "missing_experts"],
+)
+def test_vote_columns_rejects_a_pair_without_two_votes_per_group(column, annotations):
+    """A pair raises an error that names the column unless it has two crowdworker and two expert annotations."""
+    pair = {
+        "normal_worker_annotations": [{"overall_pref": "Tie"}, {"overall_pref": "Tie"}],
+        "expert_worker_annotations": [{"overall_pref": "Tie"}, {"overall_pref": "Tie"}],
+    }
+    pair[column] = annotations
+    with pytest.raises(ValueError) as error:
+        vote_columns(pair)
+    assert column in str(error.value)
