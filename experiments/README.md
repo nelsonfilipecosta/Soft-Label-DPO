@@ -6,6 +6,7 @@ Each experiment is a one-off check. Each entry gives the question, the setup, th
 | --- | --- | --- |
 | [BOS token in the chat template](#bos-token-in-the-chat-template) | Does the leading `<\|endoftext\|>` in the chat template affect the model's answers? | Keep the template as shipped and use it everywhere. |
 | [MultiPref annotations](#multipref-annotations) | Does every pair have four votes and which pairs does `tie_is_common` flag? | Build the labels from the raw votes; use `human_overall_binarized` only for the spot-check. |
+| [Agreement buckets per prompt](#agreement-buckets-per-prompt) | Do the pairs of one prompt land in the same agreement bucket? | Stratify the split by each prompt's combination of buckets. |
 
 ## BOS token in the chat template
 
@@ -113,3 +114,50 @@ Build the labels from the four raw votes in `default` and use `human_overall_bin
 - **For the spot-check,** leave out pairs where `tie_is_common` is true and pairs with p = 0.5. Match answers by their text and not by model name, because some pairs compare a model with itself.
 - **Every vote counts fully, whatever its confidence.** Only 4.7% of votes are `not-confident` or `random-guess`, so weighting by confidence stays an optional ablation. It would need a number for each of the four labels.
 - **B's advantage needs a follow-up check.** In pairs where both answers come from the same model, a stronger model cannot be the cause, so a B advantage there would point to annotators favouring a position.
+
+## Agreement buckets per prompt
+
+- **Script:** [`count_prompt_buckets.py`](count_prompt_buckets.py)
+- **Output:** printed to the terminal and copied into the result below.
+
+### Question
+
+The data is split 80/10/10 by `prompt_id`, so all pairs of a prompt go to the same split. The split is also stratified by agreement bucket (strong, moderate or split), so every split has similar bucket shares. But MultiPref repeats prompts and the two pairs of one prompt can land in different buckets. A prompt can't be split across training and evaluation, so it needs one key to stratify by:
+
+1. How many pairs does each prompt have?
+2. How many prompts have pairs in different buckets?
+3. Which combinations of buckets occur?
+
+### Setup
+
+- Dataset: `allenai/multipref` at revision `12910233a0238a997ebe425656e9dfed7b0ff031`, the `train` split of the `default` configuration (10,461 pairs).
+- Each pair's bucket comes from `vote_columns` in [`data.py`](../src/soft_label_dpo/data.py), using the rule of the [MultiPref annotations](#multipref-annotations) experiment.
+- A prompt's combination is the set of its pairs' buckets, such as moderate + split, so the order of the pairs doesn't matter.
+
+### Result
+
+**Check 1.** The 10,461 pairs come from 5,323 prompts: 5,138 prompts have two pairs and 185 have one. No prompt has more than two.
+
+**Check 2.** 3,044 of the 5,138 prompts with two pairs (59.2%) have their pairs in different buckets. These prompts hold 6,088 of the 10,461 pairs.
+
+**Check 3.**
+
+| Buckets of the prompt's pairs | Prompts |
+| --- | ---: |
+| moderate + strong | 1,581 |
+| moderate | 1,450 |
+| moderate + split | 965 |
+| strong | 629 |
+| split + strong | 498 |
+| split | 200 |
+
+- **Agreement depends on the answers, not only on the prompt.** For 498 prompts, one pair is strong and the other is split: the same question got near-unanimous votes for one pair of answers and a 2–2 split for the other.
+- **Every combination is large enough to stratify by.** The smallest, split only, still has about 20 prompts for each of the validation and test splits.
+
+### Decision
+
+Split by `prompt_id` and stratify by each prompt's combination of buckets.
+
+- **A single bucket per prompt would hide too much.** Mixed prompts are the majority, so any one bucket per prompt (the first pair's or the lowest-agreement one) would leave the shares of some buckets to chance.
+- **The combination balances all three buckets.** Each of the six groups is split 80/10/10 on its own, so every split gets nearly the same share of strong, moderate and split pairs.
+- **Check the result after splitting.** The bucket shares of the pairs, not of the prompts, should be similar in all three splits.
