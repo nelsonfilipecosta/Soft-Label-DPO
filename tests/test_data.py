@@ -5,6 +5,7 @@ Usage:
 """
 
 
+import collections
 import itertools
 
 import pytest
@@ -19,6 +20,7 @@ from soft_label_dpo.data import (
     bucket_combination,
     chosen_share,
     orient_pair,
+    split_prompts,
     vote_columns,
     vote_pattern,
     vote_share,
@@ -356,3 +358,51 @@ def test_bucket_combination_rejects_a_missing_or_unknown_bucket(buckets):
     """An empty list or a bucket that `agreement_bucket` can't return raises an error."""
     with pytest.raises(ValueError):
         bucket_combination(buckets)
+
+
+def make_prompt_ids(n: int) -> list[str]:
+    """Return `n` made-up prompt IDs, such as "prompt-007"."""
+    return [f"prompt-{i:03d}" for i in range(n)]
+
+
+def test_split_prompts_assigns_every_prompt_once():
+    """Every prompt gets exactly one split and no new prompt appears."""
+    prompt_ids = make_prompt_ids(200)
+    splits = split_prompts(prompt_ids, seed=0)
+    assert sorted(splits) == prompt_ids
+    assert set(splits.values()) == {"train", "validation", "test"}
+
+
+@pytest.mark.parametrize(
+    "n, train, validation, test",
+    [(200, 160, 20, 20), (25, 21, 2, 2), (5, 5, 0, 0)],
+    ids=["multiple_of_10", "rounds_down", "fewer_than_10"],
+)
+def test_split_prompts_gives_validation_and_test_n_over_10_prompts(n, train, validation, test):
+    """Validation and test each get n // 10 prompts and train gets the rest."""
+    counts = collections.Counter(split_prompts(make_prompt_ids(n), seed=0).values())
+    assert (counts["train"], counts["validation"], counts["test"]) == (train, validation, test)
+
+
+def test_split_prompts_gives_the_same_split_for_the_same_seed():
+    """Two runs with the same seed give the same split."""
+    prompt_ids = make_prompt_ids(200)
+    assert split_prompts(prompt_ids, seed=0) == split_prompts(prompt_ids, seed=0)
+
+
+def test_split_prompts_gives_a_different_split_for_a_different_seed():
+    """The seed changes which prompts go where."""
+    prompt_ids = make_prompt_ids(200)
+    assert split_prompts(prompt_ids, seed=0) != split_prompts(prompt_ids, seed=1)
+
+
+def test_split_prompts_ignores_the_order_of_the_prompts():
+    """Reversing the input doesn't change the split, so it doesn't depend on the order of the rows."""
+    prompt_ids = make_prompt_ids(200)
+    assert split_prompts(prompt_ids[::-1], seed=0) == split_prompts(prompt_ids, seed=0)
+
+
+def test_split_prompts_rejects_a_repeated_prompt():
+    """A prompt ID given twice raises an error instead of being silently assigned once."""
+    with pytest.raises(ValueError):
+        split_prompts(["prompt-000", "prompt-001", "prompt-000"], seed=0)

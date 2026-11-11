@@ -29,6 +29,7 @@ them, so they also work on the crowdworker or expert votes alone.
 """
 
 
+import random
 import statistics
 
 from datasets import Dataset, load_dataset
@@ -203,3 +204,28 @@ def bucket_combination(buckets: list[str]) -> str:
             raise ValueError(f"Unknown bucket {bucket!r}. Expected one of {list(AGREEMENT_BUCKETS)}.")
     # `set` drops the repeats and `sorted` fixes the order
     return "+".join(sorted(set(buckets)))
+
+
+def split_prompts(prompt_ids: list[str], seed: int) -> dict[str, str]:
+    """Assign each prompt of one group to "train", "validation" or "test" and return them as a dict.
+
+    The prompts are shuffled with `seed`, then "validation" gets the first n // 10, "test" the next n // 10
+    and "train" the rest. The same prompts and seed always give the same split, whatever the order of `prompt_ids`.
+    """
+    if len(set(prompt_ids)) != len(prompt_ids):
+        raise ValueError("Expected each prompt ID once, but some appear more than once.")
+    # Sort first, so the shuffle starts from the same order whatever the order of the rows
+    shuffled = sorted(prompt_ids)
+    # Use a private generator, so other code that uses `random` can't change this shuffle
+    random.Random(seed).shuffle(shuffled)
+    # Integer division, so no float rounding can change the size of a split
+    n_eval = len(shuffled) // 10
+    splits = {}
+    for i, prompt_id in enumerate(shuffled):
+        if i < n_eval:
+            splits[prompt_id] = "validation"
+        elif i < 2 * n_eval:
+            splits[prompt_id] = "test"
+        else:
+            splits[prompt_id] = "train"
+    return splits
