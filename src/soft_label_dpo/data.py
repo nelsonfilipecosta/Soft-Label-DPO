@@ -57,6 +57,9 @@ VOTE_LETTERS = {
     "B-is-clearly-better": "B",
 }
 
+# The agreement buckets that `agreement_bucket` returns
+AGREEMENT_BUCKETS = ("strong", "moderate", "split")
+
 
 def load_multipref(config: str) -> Dataset:
     """Return the train split of a MultiPref configuration, such as "default", at `MULTIPREF_REVISION`."""
@@ -185,3 +188,18 @@ def orient_pair(pair: dict) -> dict:
         "chosen_model": pair[f"model_{chosen}"],
         "rejected_model": pair[f"model_{rejected}"],
     }
+
+
+def bucket_combination(buckets: list[str]) -> str:
+    """Return a prompt's combination of buckets, such as "moderate+strong", to stratify the split by.
+
+    `buckets` holds the bucket of each pair of the prompt. They are sorted and repeats are dropped, so the
+    order of the pairs doesn't matter and a prompt whose two pairs are both split gives "split".
+    """
+    if not buckets:
+        raise ValueError("Expected at least one bucket.")
+    for bucket in buckets:
+        if bucket not in AGREEMENT_BUCKETS:
+            raise ValueError(f"Unknown bucket {bucket!r}. Expected one of {list(AGREEMENT_BUCKETS)}.")
+    # `set` drops the repeats and `sorted` fixes the order
+    return "+".join(sorted(set(buckets)))

@@ -10,11 +10,13 @@ import itertools
 import pytest
 
 from soft_label_dpo.data import (
+    AGREEMENT_BUCKETS,
     VOTE_LETTERS,
     VOTE_VALUES,
     _check_labels,
     a_is_chosen,
     agreement_bucket,
+    bucket_combination,
     chosen_share,
     orient_pair,
     vote_columns,
@@ -203,6 +205,11 @@ def test_agreement_bucket_rejects_a_p_between_buckets(p):
         agreement_bucket(p)
 
 
+def test_agreement_bucket_returns_exactly_the_agreement_buckets():
+    """Make sure the `AGREEMENT_BUCKETS` constant and the `agreement_bucket` function don't drift apart."""
+    assert {agreement_bucket(k / 8) for k in range(9)} == set(AGREEMENT_BUCKETS)
+
+
 def test_vote_columns_returns_the_columns_of_a_pair():
     """Crowdworker votes A and Tie and expert votes B and A give the pattern AABT."""
     pair = {
@@ -326,3 +333,26 @@ def test_orient_pair_works_when_both_answers_come_from_the_same_model():
     oriented = orient_pair(pair)
     assert oriented["chosen_completion"] == "Answer B"
     assert oriented["rejected_completion"] == "Answer A"
+
+
+@pytest.mark.parametrize(
+    "buckets, combination",
+    [
+        (["strong"], "strong"),
+        (["moderate", "strong"], "moderate+strong"),
+        (["strong", "moderate"], "moderate+strong"),
+        (["split", "split"], "split"),
+        (["strong", "split"], "split+strong"),
+    ],
+    ids=["one_pair", "two_buckets", "two_buckets_reversed", "same_bucket_twice", "split_and_strong"],
+)
+def test_bucket_combination_sorts_the_buckets_and_drops_repeats(buckets, combination):
+    """The combination doesn't depend on the order of the pairs and names each bucket once."""
+    assert bucket_combination(buckets) == combination
+
+
+@pytest.mark.parametrize("buckets", [[], ["strong", "Strong"]], ids=["no_buckets", "unknown_bucket"])
+def test_bucket_combination_rejects_a_missing_or_unknown_bucket(buckets):
+    """An empty list or a bucket that `agreement_bucket` can't return raises an error."""
+    with pytest.raises(ValueError):
+        bucket_combination(buckets)
