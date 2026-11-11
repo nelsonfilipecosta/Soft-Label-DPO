@@ -9,6 +9,7 @@ import collections
 import itertools
 
 import pytest
+from datasets import Dataset
 
 from soft_label_dpo.data import (
     AGREEMENT_BUCKETS,
@@ -20,6 +21,7 @@ from soft_label_dpo.data import (
     bucket_combination,
     chosen_share,
     orient_pair,
+    split_by_prompt,
     split_prompts,
     vote_columns,
     vote_pattern,
@@ -406,3 +408,58 @@ def test_split_prompts_rejects_a_repeated_prompt():
     """A prompt ID given twice raises an error instead of being silently assigned once."""
     with pytest.raises(ValueError):
         split_prompts(["prompt-000", "prompt-001", "prompt-000"], seed=0)
+
+
+def make_pairs() -> Dataset:
+    """Return 50 made-up pairs from 30 prompts, where 20 prompts have a strong and a moderate pair and 10
+    prompts have one split pair. Each pair has its own `comparison_id`, so it can be followed."""
+    rows = []
+    for i in range(20):
+        rows.append({"comparison_id": f"mixed-{i:02d}-1", "prompt_id": f"mixed-{i:02d}", "bucket": "strong"})
+        rows.append({"comparison_id": f"mixed-{i:02d}-2", "prompt_id": f"mixed-{i:02d}", "bucket": "moderate"})
+    for i in range(10):
+        rows.append({"comparison_id": f"split-{i:02d}-1", "prompt_id": f"split-{i:02d}", "bucket": "split"})
+    return Dataset.from_list(rows)
+
+
+def test_split_by_prompt_returns_the_three_splits_with_all_columns():
+    """The result has "train", "validation" and "test" and every split keeps the columns of the pairs."""
+    splits = split_by_prompt(make_pairs(), seed=0)
+    assert list(splits) == ["train", "validation", "test"]
+    for split in splits.values():
+        assert split.column_names == ["comparison_id", "prompt_id", "bucket"]
+
+
+def test_split_by_prompt_puts_every_pair_in_exactly_one_split():
+    """No pair is lost or repeated."""
+    pairs = make_pairs()
+    splits = split_by_prompt(pairs, seed=0)
+    split_ids = [comparison_id for split in splits.values() for comparison_id in split["comparison_id"]]
+    assert sorted(split_ids) == sorted(pairs["comparison_id"])
+
+
+def test_split_by_prompt_keeps_each_prompt_in_one_split():
+    """No prompt has pairs in two splits."""
+    splits = split_by_prompt(make_pairs(), seed=0)
+    prompts = [set(split["prompt_id"]) for split in splits.values()]
+    for first, second in itertools.combinations(prompts, 2):
+        assert first.isdisjoint(second)
+
+
+def test_split_by_prompt_splits_each_combination_on_its_own():
+    """The 20 mixed prompts give 16/2/2 and the 10 split prompts give 8/1/1, so the pairs come out as
+    16*2+8=40 in train and 2*2+1=5 in validation and test."""
+    splits = split_by_prompt(make_pairs(), seed=0)
+    for name, (mixed, split_only) in {"train": (16, 8), "validation": (2, 1), "test": (2, 1)}.items():
+        prompts = set(splits[name]["prompt_id"])
+        assert sum(prompt.startswith("mixed") for prompt in prompts) == mixed
+        assert sum(prompt.startswith("split") for prompt in prompts) == split_only
+        assert len(splits[name]) == 2 * mixed + split_only
+
+
+def test_split_by_prompt_gives_the_same_splits_for_the_same_seed():
+    """Two runs with the same seed put the same pairs in each split."""
+    first = split_by_prompt(make_pairs(), seed=0)
+    second = split_by_prompt(make_pairs(), seed=0)
+    for name in ("train", "validation", "test"):
+        assert first[name]["comparison_id"] == second[name]["comparison_id"]

@@ -29,16 +29,19 @@ them, so they also work on the crowdworker or expert votes alone.
 """
 
 
+import collections
 import random
 import statistics
 
-from datasets import Dataset, load_dataset
+from datasets import Dataset, DatasetDict, load_dataset
 
 
 # MultiPref pinned to one revision of the dataset so every script reads the same votes
-
 MULTIPREF_ID = "allenai/multipref"
 MULTIPREF_REVISION = "12910233a0238a997ebe425656e9dfed7b0ff031"
+
+# Seed of the "train", "validation" and "test" split, so the same split can always be rebuilt
+SPLIT_SEED = 42
 
 # Map each `overall_pref` label to a number for p and d ("slightly" and "clearly" count the same)
 VOTE_VALUES = {
@@ -113,9 +116,9 @@ def agreement_bucket(p: float) -> str:
 
     With q = max(p, 1 - p), the bucket is:
 
-    - strong if q >= 0.875 (p <= 0.125 or p >= 0.875)
-    - moderate if 0.625 <= q <= 0.75 (0.25 <= p <= 0.375 or 0.625 <= p <= 0.75)
-    - split if q = 0.5 (p = 0.5)
+    - "strong" if q >= 0.875 (p <= 0.125 or p >= 0.875)
+    - "moderate" if 0.625 <= q <= 0.75 (0.25 <= p <= 0.375 or 0.625 <= p <= 0.75)
+    - "split" if q = 0.5 (p = 0.5)
     """
     q = chosen_share(p)
     if q >= 0.875:
@@ -229,3 +232,34 @@ def split_prompts(prompt_ids: list[str], seed: int) -> dict[str, str]:
         else:
             splits[prompt_id] = "train"
     return splits
+
+
+def split_by_prompt(pairs: Dataset, seed: int = SPLIT_SEED) -> DatasetDict:
+    """Split the pairs 80/10/10 by prompt, stratified by each prompt's combination of buckets.
+
+    The pairs need `prompt_id` and `bucket`. All pairs of a prompt go to the same split. Each prompt
+    is labelled with the combination of its pairs' buckets, such as "moderate+split", which puts the
+    prompts in six groups. Each group is shuffled and cut 80/10/10 separately with `split_prompts`.
+    So every split gets the same mix of groups and with it nearly the same share of strong, moderate
+    and split pairs. Within each split, the pairs keep their original order.
+    """
+    # Collect the buckets of each prompt's pairs
+    buckets_of_prompt = collections.defaultdict(list)
+    for prompt_id, bucket in zip(pairs["prompt_id"], pairs["bucket"]):
+        buckets_of_prompt[prompt_id].append(bucket)
+
+    # Group the prompts by their combination of buckets
+    prompts_of_combination = collections.defaultdict(list)
+    for prompt_id, buckets in buckets_of_prompt.items():
+        prompts_of_combination[bucket_combination(buckets)].append(prompt_id)
+
+    # Split each combination on its own, then look up the split of every pair through its prompt
+    split_of_prompt = {}
+    for prompt_ids in prompts_of_combination.values():
+        split_of_prompt.update(split_prompts(prompt_ids, seed))
+    split_of_pair = [split_of_prompt[prompt_id] for prompt_id in pairs["prompt_id"]]
+
+    return DatasetDict({
+        split: pairs.select([i for i, pair_split in enumerate(split_of_pair) if pair_split == split])
+        for split in ("train", "validation", "test")
+    })
