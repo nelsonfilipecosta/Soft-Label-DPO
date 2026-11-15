@@ -23,6 +23,7 @@ from soft_label_dpo.data import (
     orient_pair,
     split_by_prompt,
     split_prompts,
+    to_conversational,
     vote_columns,
     vote_pattern,
     vote_share,
@@ -463,3 +464,22 @@ def test_split_by_prompt_gives_the_same_splits_for_the_same_seed():
     second = split_by_prompt(make_pairs(), seed=0)
     for name in ("train", "validation", "test"):
         assert first[name]["comparison_id"] == second[name]["comparison_id"]
+
+
+def test_to_conversational_wraps_each_text_in_one_message():
+    """The prompt becomes one user message and each answer one assistant message."""
+    pair = {"text": "What causes the seasons?", "chosen_completion": "Axial tilt.", "rejected_completion": "Distance."}
+    assert to_conversational(pair) == {
+        "prompt": [{"role": "user", "content": "What causes the seasons?"}],
+        "chosen": [{"role": "assistant", "content": "Axial tilt."}],
+        "rejected": [{"role": "assistant", "content": "Distance."}],
+    }
+
+
+def test_to_conversational_copies_the_texts_exactly():
+    """Leading and trailing spaces and newlines are kept, so the texts still match the raw answers."""
+    pair = {"text": "  Question?\n", "chosen_completion": "\n\nFirst line\n  second line ", "rejected_completion": " "}
+    conversation = to_conversational(pair)
+    assert conversation["prompt"][0]["content"] == "  Question?\n"
+    assert conversation["chosen"][0]["content"] == "\n\nFirst line\n  second line "
+    assert conversation["rejected"][0]["content"] == " "

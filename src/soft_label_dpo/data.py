@@ -263,3 +263,17 @@ def split_by_prompt(pairs: Dataset, seed: int = SPLIT_SEED) -> DatasetDict:
         split: pairs.select([i for i, pair_split in enumerate(split_of_pair) if pair_split == split])
         for split in ("train", "validation", "test")
     })
+
+
+def to_conversational(pair: dict) -> dict:
+    """Return the prompt, chosen and rejected columns of one preference pair in TRL's conversational format.
+
+    The pair needs `text` from MultiPref and the columns from `orient_pair`. Each column is a list with one
+    message, so TRL applies the model's chat template itself and knows where the prompt ends. The texts are
+    copied exactly, without stripping or cleaning, so they still match the raw MultiPref answers.
+    """
+    return {
+        "prompt": [{"role": "user", "content": pair["text"]}],
+        "chosen": [{"role": "assistant", "content": pair["chosen_completion"]}],
+        "rejected": [{"role": "assistant", "content": pair["rejected_completion"]}],
+    }
