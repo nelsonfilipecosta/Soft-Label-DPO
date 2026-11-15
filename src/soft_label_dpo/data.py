@@ -64,6 +64,31 @@ VOTE_LETTERS = {
 # The agreement buckets that `agreement_bucket` returns
 AGREEMENT_BUCKETS = ("strong", "moderate", "split")
 
+# The columns saved in the dataset
+SAVED_COLUMNS = (
+    # IDs to trace each pair back to MultiPref
+    "comparison_id",
+    "prompt_id",
+    # TRL's conversational format
+    "prompt",
+    "chosen",
+    "rejected",
+    # Labels from the four votes
+    "p",
+    "q",
+    "d",
+    "bucket",
+    "vote_pattern",
+    "chosen_is_a",
+    "crowd_votes",
+    "expert_votes",
+    # Metadata
+    "chosen_model",
+    "rejected_model",
+    "category",
+    "source",
+)
+
 
 def load_multipref(config: str) -> Dataset:
     """Return the train split of a MultiPref configuration, such as "default", at `MULTIPREF_REVISION`."""

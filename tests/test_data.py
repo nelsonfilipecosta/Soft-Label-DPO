@@ -13,6 +13,7 @@ from datasets import Dataset
 
 from soft_label_dpo.data import (
     AGREEMENT_BUCKETS,
+    SAVED_COLUMNS,
     VOTE_LETTERS,
     VOTE_VALUES,
     _check_labels,
@@ -483,3 +484,33 @@ def test_to_conversational_copies_the_texts_exactly():
     assert conversation["prompt"][0]["content"] == "  Question?\n"
     assert conversation["chosen"][0]["content"] == "\n\nFirst line\n  second line "
     assert conversation["rejected"][0]["content"] == " "
+
+
+def test_saved_columns_are_exactly_the_columns_left_after_selecting_them():
+    """A raw MultiPref row, built by hand with every column, goes through the mapping functions and
+    `select_columns`, so a misspelled or missing name in `SAVED_COLUMNS` fails here and not on the full data."""
+    raw_pair = {
+        "comparison_id": "c1",
+        "prompt_id": "p1",
+        "text": "What causes the seasons?",
+        "model_a": "model-a",
+        "completion_a": "Distance.",
+        "model_b": "model-b",
+        "completion_b": "Axial tilt.",
+        "source": "made-up",
+        "category": "Open QA",
+        "subject_study": "Physics",
+        "highest_level_degree": "Physics",
+        "normal_worker_annotations": [
+            {"evaluator": "crowd-1", "overall_pref": "B-is-clearly-better", "overall_confidence": "fairly-confident"},
+            {"evaluator": "crowd-2", "overall_pref": "B-is-slightly-better", "overall_confidence": "not-confident"},
+        ],
+        "expert_worker_annotations": [
+            {"evaluator": "expert-1", "overall_pref": "B-is-clearly-better", "overall_confidence": "absolutely-confident"},
+            {"evaluator": "expert-2", "overall_pref": "Tie", "overall_confidence": "fairly-confident"},
+        ],
+    }
+    pairs = Dataset.from_list([raw_pair]).map(vote_columns).map(orient_pair).map(to_conversational)
+    saved = pairs.select_columns(list(SAVED_COLUMNS))
+    assert saved.column_names == list(SAVED_COLUMNS)
+    assert saved[0]["chosen"] == [{"role": "assistant", "content": "Axial tilt."}]
