@@ -5,10 +5,11 @@ Each experiment is a one-off check. Each entry gives the question, the setup, th
 | Experiment | Question | Decision |
 | --- | --- | --- |
 | [BOS token in the chat template](#bos-token-in-the-chat-template) | Does the leading `<\|endoftext\|>` in the chat template affect the model's answers? | Keep the template as shipped and use it everywhere. |
-| [MultiPref annotations](#multipref-annotations) | Does every pair have four votes and which pairs does `tie_is_common` flag? | Build the labels from the raw votes; use `human_overall_binarized` only for the spot-check. |
+| [MultiPref annotations](#multipref-annotations) | Does every pair have four votes and which pairs does `tie_is_common` flag? | Build the labels from the raw votes and use `human_overall_binarized` only for the spot-check. |
 | [Agreement buckets per prompt](#agreement-buckets-per-prompt) | Do the pairs of one prompt land in the same agreement bucket? | Stratify the split by each prompt's combination of buckets. |
 | [p against d](#p-against-d) | For how many pairs does d add information beyond p, and how are split pairs divided by vote pattern? | Report split pairs overall and by vote pattern, with confidence intervals. |
 | [Token lengths](#token-lengths) | How many pairs does each `max_length` truncate or drop? | Use `max_length` 2,048 in training and evaluation, if it fits in memory. |
+| [Position of the answers](#position-of-the-answers) | Why does B win 67.7% of the majorities: do annotators favour position B or were stronger models placed there? | Keep the data as it is and note the small position bias and the non-random placement in the write-up. |
 
 ## BOS token in the chat template
 
@@ -96,7 +97,7 @@ The soft labels need the four human votes of every pair, which only the `default
 - **It is sometimes true** for AATT (68%), BBTT (64%), AABT (11%) and ABBT (11%), so it depends on more than the number of A, B and T votes. The following rule fits every row of the table: a pair is flagged when Tie is the most common label on the five-point scale, with ties between labels broken by order or at random. This rule is inferred from the counts, not read from Ai2's code.
 - **AABB pairs are never flagged** (755, 7.2%), although a 2–2 split has no majority. Their binarized winner cannot follow from the votes and filtering on `tie_is_common` does not remove them.
 - **Pairs without a majority** (p = 0.5: AABB, ABTT and TTTT) are 1,836 of the 10,461 pairs (17.6%).
-- **B wins far more often than A.** Of the 8,625 pairs with a majority, B has it in 5,842 (67.7%) and A in 2,783 (32.3%). This is not yet explained, but annotators may favour position B or the stronger model may more often be placed in position B.
+- **B wins far more often than A.** Of the 8,625 pairs with a majority, B has it in 5,842 (67.7%) and A in 2,783 (32.3%). Annotators may favour position B or the stronger model may more often be placed in position B. The [Position of the answers](#position-of-the-answers) experiment finds that it is mostly the placement of the models.
 
 **Check 3.** Every annotation has one of four labels and none is empty or missing.
 
@@ -115,7 +116,7 @@ Build the labels from the four raw votes in `default` and use `human_overall_bin
 - **`tie_is_common` doesn't match the soft labels' rule.** It flags pairs with a clear majority under that rule, such as BBTT (p = 0.25), and misses pairs with none, such as AABB.
 - **For the spot-check,** leave out pairs where `tie_is_common` is true and pairs with p = 0.5. Match answers by their text and not by model name, because some pairs compare a model with itself.
 - **Every vote counts fully, whatever its confidence.** Only 4.7% of votes are `not-confident` or `random-guess`, so weighting by confidence stays an optional ablation. It would need a number for each of the four labels.
-- **B's advantage needs a follow-up check.** In pairs where both answers come from the same model, a stronger model cannot be the cause, so a B advantage there would point to annotators favouring a position.
+- **B's advantage needs a follow-up check.** In pairs where both answers come from the same model, a stronger model cannot be the cause, so a B advantage there would point to annotators favouring a position. See [Position of the answers](#position-of-the-answers).
 
 ## Agreement buckets per prompt
 
@@ -297,3 +298,61 @@ Use `max_length` 2,048 for training and for the evaluation of every condition, i
 - **2,048 keeps almost everything.** Only 115 pairs (1.1%) are cut and 31 (0.3%) dropped. 4,096 would save 105 more pairs at a much larger cost in memory.
 - **The cost is in memory, not in time.** TRL pads each batch to its longest sequence, so only the few batches with a long pair get longer. The smoke test peaked at 15.24 GiB with batch size 2 and `max_length` 1,024. The model and optimizer take a fixed share of that, so 2,048 should stay below double. Measure the peak in plan step 2, and fall back to 1,536 or to batch size 1 with gradient accumulation if it doesn't fit.
 - **Use the same `max_length` in the evaluation.** The margins h on the test split are computed by our own code, and cutting the sequences in the same way as training keeps every condition compared on the same text.
+
+## Position of the answers
+
+- **Script:** [`count_position_wins.py`](count_position_wins.py)
+- **Output:** printed to the terminal and copied into the result below.
+
+### Question
+
+In the [MultiPref annotations](#multipref-annotations) experiment, B had the majority in 67.7% of the pairs with a majority. Either the annotators favour the answer shown in position B or the stronger models were more often placed in position B. In a pair where both answers come from the same model, model strength can't favour either position, so B's share there tells the two apart:
+
+1. What is B's share of the majorities over all pairs with a majority?
+2. What is it over the pairs where both answers come from the same model?
+3. How often does each model appear in position A and in position B?
+
+### Setup
+
+- Dataset: `nelsonfilipecosta/multipref-soft-labels` at revision `96819a1cda4e6391735e4078f4fe8e15afe3adec`, all three splits (10,461 pairs).
+- The models in positions A and B are recovered from `chosen_model`, `rejected_model` and `chosen_is_a`.
+- B has the majority when the pair isn't split (p ≠ 0.5) and the chosen answer isn't A.
+- Each share comes with a 95% Wilson confidence interval, which stays between 0 and 1 and works for small samples.
+
+### Result
+
+**Check 1.** B has the majority in 5,842 of the 8,625 pairs with a majority (67.7%, 95% CI 66.7%–68.7%), as in the MultiPref annotations experiment.
+
+**Check 2.** 2,919 of the 10,461 pairs (27.9%) compare a model with itself.
+
+| Pairs | Pairs with a majority | B has the majority | 95% CI |
+| --- | ---: | ---: | ---: |
+| same model | 2,273 | 1,259 (55.4%) | 53.3%–57.4% |
+| different models | 6,352 | 4,583 (72.2%) | 71.0%–73.2% |
+
+- **Annotators favour position B a little.** With the same model in both positions, B still has 55.4% of the majorities and the interval excludes 50%.
+- **Most of B's advantage comes from the models.** The 55.4% is far below the 67.7% overall and the interval excludes it.
+- **Pairs of the same model are split more often:** 646 of 2,919 (22.1%) against 1,190 of 7,542 (15.8%) for pairs of different models. Annotators disagree more when the two answers are alike.
+
+**Check 3.** Appearances of each model in position A and B over all pairs:
+
+| Model | A | B | Share in B |
+| --- | ---: | ---: | ---: |
+| `allenai/tulu-2-7b` | 3,059 | 517 | 14.5% |
+| `gpt-4-turbo-2024-04-09` | 1,517 | 2,001 | 56.9% |
+| `allenai/tulu-2-70b` | 2,517 | 998 | 28.4% |
+| `meta-llama/Meta-Llama-3-70B-Instruct` | 476 | 3,010 | 86.3% |
+| `meta-llama/Llama-2-70b-chat-hf` | 971 | 2,481 | 71.9% |
+| `gpt-3.5-turbo-0125` | 1,921 | 1,454 | 43.1% |
+
+- **The models were not placed at random.** Llama 3 70B is in position B 86.3% of the time and Tulu 2 7B only 14.5%, while each model appears in about a third of the pairs.
+- **The placement favours the stronger models in B.** The smallest model, Tulu 2 7B, is mostly in A, and one of the strongest, Llama 3 70B, mostly in B. This fits the 72.2% for B in pairs of different models.
+
+### Decision
+
+Keep the data as it is and note both findings in the write-up.
+
+- **Training doesn't see the positions.** Every pair is turned into chosen and rejected answers before training, so DPO can't learn to prefer a position.
+- **The small position bias is part of the label noise.** In pairs of the same model, B gains about 5 points over the 50% expected without bias, so some majorities partly reflect where an answer was shown. The soft labels carry this as disagreement, like any other source of it.
+- **"B wins 67.7%" is not an annotator bias.** Most of it comes from the placement of the models, so it should not be quoted as one.
+- **Same-model pairs are a natural group of hard pairs.** They are split more often, so they are worth a look in the evaluation of split pairs.
