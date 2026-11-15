@@ -7,7 +7,7 @@ The script runs the whole pipeline of `src/soft_label_dpo/data.py`:
 3. Split 80/10/10 by prompt, stratified by the combination of buckets of each prompt.
 4. Convert to TRL's conversational format and keep only `SAVED_COLUMNS`.
 
-It then pushes the "train", "validation" and "test" splits to `DATASET_REPO_ID` and uploads a
+It then pushes the "train", "validation" and "test" splits to `SOFT_LABEL_DATASET_ID` and uploads a
 `build_info.json` next to them. The file records the MultiPref revision, the split seed and the git
 commit of this code, so every training run can be traced back to the exact votes and split it used.
 
@@ -32,6 +32,7 @@ from soft_label_dpo.data import (
     MULTIPREF_ID,
     MULTIPREF_REVISION,
     SAVED_COLUMNS,
+    SOFT_LABEL_DATASET_ID,
     SPLIT_SEED,
     load_multipref,
     orient_pair,
@@ -39,9 +40,6 @@ from soft_label_dpo.data import (
     to_conversational,
     vote_columns,
 )
-
-
-DATASET_REPO_ID = "nelsonfilipecosta/multipref-soft-labels"
 
 
 def git_commit() -> str:
@@ -87,18 +85,18 @@ def main():
     print(json.dumps(build_info, indent=2))
 
     # `private` only applies when the push creates the repository
-    splits.push_to_hub(DATASET_REPO_ID, private=True, commit_message=f"built from git commit `{commit}`")
+    splits.push_to_hub(SOFT_LABEL_DATASET_ID, private=True, commit_message=f"built from git commit `{commit}`")
     upload = HfApi().upload_file(
         path_or_fileobj=json.dumps(build_info, indent=2).encode(),
         path_in_repo="build_info.json",
-        repo_id=DATASET_REPO_ID,
+        repo_id=SOFT_LABEL_DATASET_ID,
         repo_type="dataset",
         commit_message="uploaded `build_info.json`",
     )
 
     print()
-    print(f"Pushed to https://huggingface.co/datasets/{DATASET_REPO_ID}")
-    print(f"Revision to pin in the configs: {upload.oid}")
+    print(f"Pushed to https://huggingface.co/datasets/{SOFT_LABEL_DATASET_ID}.")
+    print(f"Revision to pin as `SOFT_LABEL_DATASET_REVISION` in data.py and in the configs: {upload.oid}")
 
 
 if __name__ == "__main__":

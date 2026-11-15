@@ -43,6 +43,10 @@ MULTIPREF_REVISION = "12910233a0238a997ebe425656e9dfed7b0ff031"
 # Seed of the "train", "validation" and "test" split, so the same split can always be rebuilt
 SPLIT_SEED = 42
 
+# The dataset built by `scripts/build_dataset.py`
+SOFT_LABEL_DATASET_ID = "nelsonfilipecosta/multipref-soft-labels"
+SOFT_LABEL_DATASET_REVISION = "96819a1cda4e6391735e4078f4fe8e15afe3adec" # update after a dataset rebuild
+
 # Map each `overall_pref` label to a number for p and d ("slightly" and "clearly" count the same)
 VOTE_VALUES = {
     "A-is-clearly-better": 1.0,
@@ -93,6 +97,11 @@ SAVED_COLUMNS = (
 def load_multipref(config: str) -> Dataset:
     """Return the train split of a MultiPref configuration, such as "default", at `MULTIPREF_REVISION`."""
     return load_dataset(MULTIPREF_ID, config, split="train", revision=MULTIPREF_REVISION)
+
+
+def load_soft_label_dataset() -> DatasetDict:
+    """Return the "train", "validation" and "test" splits of the soft-label dataset at `SOFT_LABEL_DATASET_REVISION`."""
+    return load_dataset(SOFT_LABEL_DATASET_ID, revision=SOFT_LABEL_DATASET_REVISION)
 
 
 def _check_labels(labels: list[str]) -> None:
