@@ -8,6 +8,7 @@ Each experiment is a one-off check. Each entry gives the question, the setup, th
 | [MultiPref annotations](#multipref-annotations) | Does every pair have four votes and which pairs does `tie_is_common` flag? | Build the labels from the raw votes; use `human_overall_binarized` only for the spot-check. |
 | [Agreement buckets per prompt](#agreement-buckets-per-prompt) | Do the pairs of one prompt land in the same agreement bucket? | Stratify the split by each prompt's combination of buckets. |
 | [p against d](#p-against-d) | For how many pairs does d add information beyond p, and how are split pairs divided by vote pattern? | Report split pairs overall and by vote pattern, with confidence intervals. |
+| [Token lengths](#token-lengths) | How many pairs does each `max_length` truncate or drop? | Use `max_length` 2,048 in training and evaluation, if it fits in memory. |
 
 ## BOS token in the chat template
 
@@ -226,3 +227,73 @@ Report the results on split pairs overall and by vote pattern, each with a confi
 - **The overall value on the 181 split pairs of the test split is the main result.** It has the most pairs and is the same for every condition.
 - **The breakdown by vote pattern is secondary.** Contested (AABB) and indifferent (TTTT) pairs may be treated differently by the models, but with 85 and 33 pairs only large differences will show, so the confidence intervals must be reported with it.
 - **Keep d in the dataset.** The soft labels use only q, so pairs with the same q but different d, such as AATT and AAAB, get the same target. This is a limitation to note in the write-up, and d is what makes it visible.
+
+## Token lengths
+
+- **Script:** [`measure_token_lengths.py`](measure_token_lengths.py)
+- **Output:** printed to the terminal and copied into the result below.
+
+### Question
+
+DPO training cuts every sequence (prompt + answer) to `max_length` tokens, which is 1,024 in the smoke test. TRL 1.14 keeps the start of a sequence, so a long answer loses its end, and it drops a pair from training when its prompt alone reaches `max_length`. Before choosing `max_length` for the real runs:
+
+1. How long are the prompts and the two sequences of each pair?
+2. How are the lengths of the longer sequence of each pair distributed?
+3. How many pairs does each candidate `max_length` truncate or drop, and does it hit one bucket more than the others?
+
+### Setup
+
+- Dataset: `nelsonfilipecosta/multipref-soft-labels` at revision `96819a1cda4e6391735e4078f4fe8e15afe3adec`, all three splits (10,461 pairs).
+- Tokenizer: `allenai/OLMo-2-0425-1B-SFT` at revision `0d85a3d037876ce6ac7d4311d994400fc66ac27f`, with the chat template applied as TRL 1.14 does: to the prompt alone with the generation prompt, to prompt + chosen and to prompt + rejected.
+- A pair is truncated when the longer of its two sequences has more than `max_length` tokens, and dropped when its prompt alone has `max_length` tokens or more.
+
+### Result
+
+**Check 1.**
+
+| Sequence | Median | 90% | 95% | 99% | Max |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| prompt | 29 | 158 | 378 | 1,378 | 2,597 |
+| prompt + chosen | 391 | 790 | 1,012 | 1,959 | 4,778 |
+| prompt + rejected | 293 | 712 | 938 | 1,937 | 7,502 |
+| longer of the two | 444 | 821 | 1,068 | 2,100 | 7,502 |
+
+- **Most prompts are short** (median 29 tokens), but the longest 1% have more than 1,378 tokens, such as pasted documents or code.
+- **The chosen answer tends to be longer than the rejected one** (median 391 against 293 tokens with the prompt). This fits the known preference of annotators for longer answers, so DPO may teach the model to write longer answers. <ins>Answer length is worth logging in the evaluation.</ins>
+
+**Check 2.** Longer sequence of each pair:
+
+| Tokens | Pairs | Share |
+| --- | ---: | ---: |
+| 0–255 | 2,564 | 24.5% |
+| 256–511 | 3,611 | 34.5% |
+| 512–767 | 2,967 | 28.4% |
+| 768–1,023 | 746 | 7.1% |
+| 1,024–1,535 | 352 | 3.4% |
+| 1,536–2,047 | 106 | 1.0% |
+| 2,048–3,071 | 89 | 0.9% |
+| 3,072–4,095 | 16 | 0.2% |
+| 4,096+ | 10 | 0.1% |
+
+**Check 3.**
+
+| `max_length` | Truncated | Strong | Moderate | Split | Dropped |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 512 | 4,270 (40.8%) | 42.5% | 41.1% | 37.1% | 397 (3.8%) |
+| 1,024 | 573 (5.5%) | 5.9% | 5.5% | 4.6% | 162 (1.5%) |
+| 1,536 | 220 (2.1%) | 2.2% | 2.2% | 1.7% | 72 (0.7%) |
+| 2,048 | 115 (1.1%) | 1.2% | 1.1% | 0.9% | 31 (0.3%) |
+| 4,096 | 10 (0.1%) | 0.2% | 0.1% | 0.0% | 0 |
+
+- **1,024 truncates 5.5% of the pairs and drops 1.5%.** The dropped pairs are among the truncated ones: their prompt alone fills `max_length`, so no answer token is left to train on.
+- **Truncation hits the three buckets about equally,** with split pairs slightly less often, so no `max_length` changes the balance of the buckets much.
+- **2,048 truncates 1.1% and drops 0.3%,** and 4,096 truncates only the 10 longest pairs.
+
+### Decision
+
+Use `max_length` 2,048 for training and for the evaluation of every condition, if it fits in memory.
+
+- **1,024 loses too much.** It cuts the end of 573 pairs, where the two answers may differ most, and removes 162 pairs from training.
+- **2,048 keeps almost everything.** Only 115 pairs (1.1%) are cut and 31 (0.3%) dropped. 4,096 would save 105 more pairs at a much larger cost in memory.
+- **The cost is in memory, not in time.** TRL pads each batch to its longest sequence, so only the few batches with a long pair get longer. The smoke test peaked at 15.24 GiB with batch size 2 and `max_length` 1,024. The model and optimizer take a fixed share of that, so 2,048 should stay below double. Measure the peak in plan step 2, and fall back to 1,536 or to batch size 1 with gradient accumulation if it doesn't fit.
+- **Use the same `max_length` in the evaluation.** The margins h on the test split are computed by our own code, and cutting the sequences in the same way as training keeps every condition compared on the same text.
