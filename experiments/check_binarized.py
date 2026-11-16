@@ -1,11 +1,11 @@
 """Check the majority labels of the soft-label dataset against the "human_overall_binarized" configuration of MultiPref.
 
-Ai2 built the "human_overall_binarized" configuration from the same four votes with their own code, so
-both the soft-label and binarized datasets should pick the same chosen answer wherever a pair has a clear
-majority. A disagreement is either a difference between the two rules or a bug in the pipeline. The Ai2
-pairs where `tie_is_common` is true are left out of the comparison, because Ai2 picked a random winner
-for those pairs, and our split pairs (p = 0.5) are also left out of the comparison, because we picked A
-by convention.
+The "human_overall_binarized" configuration of MultiPref keeps one winner per pair, which Ai2 picked from
+the same four votes with their own code. Wherever a pair has a clear majority, it should pick the same chosen
+answer as the soft-label dataset. A disagreement is either a difference between the two rules or a bug in our
+pipeline, such as a swapped A and B, misaligned rows or altered texts. The Ai2 pairs where `tie_is_common` is
+true are left out of the comparison, because Ai2 picked a random winner for those pairs, and our split pairs
+(p = 0.5) are also left out of the comparison, because we picked A by convention.
 
 The answers are matched by text and not by model name, because 27.9% of the pairs compare a model with
 itself. This script checks four things on all 10,461 pairs of the soft-label dataset at its pinned revision:
@@ -125,7 +125,7 @@ def main():
         print(f"-> {name} ({len(selected):,} pairs)")
         print("   vote patterns: " + ", ".join(f"{pattern} {count:,}" for pattern, count in sorted(patterns.items())))
         print("   weighted scores: " + ", ".join(f"{score:+d} {count:,}" for score, count in sorted(score_counts.items())))
-    # A swapped pair whose weighted votes still favour our chosen answer fits neither rule and points to a bug
+    # If Ai2 only weighted "clearly" above "slightly", no swapped pair would have a positive weighted score
     unexplained = [
         i for i, (result, keep) in enumerate(zip(outcomes, compared))
         if keep and result == "swapped" and scores[i] > 0
