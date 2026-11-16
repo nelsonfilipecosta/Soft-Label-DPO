@@ -5,9 +5,9 @@ also stratified by `bucket`, so each prompt needs one key to stratify by, even w
 different buckets. This script checks three things on the full train split (10,461 pairs) of the
 "default" configuration:
 
-1. Count the prompts by their number of pairs.
-2. Count the prompts with two or more pairs whose pairs are in different buckets.
-3. Count every prompt by its combination of buckets, such as "moderate+split".
+1. The number of prompts by their number of pairs.
+2. The number of prompts with two or more pairs whose pairs are in different buckets.
+3. The number of prompts by their combination of buckets, such as "moderate+split".
 
 Usage:
     uv run python experiments/count_prompt_buckets.py

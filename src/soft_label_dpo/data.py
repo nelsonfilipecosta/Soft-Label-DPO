@@ -45,7 +45,7 @@ SPLIT_SEED = 42
 
 # The dataset built by `scripts/build_dataset.py`
 SOFT_LABEL_DATASET_ID = "nelsonfilipecosta/multipref-soft-labels"
-SOFT_LABEL_DATASET_REVISION = "96819a1cda4e6391735e4078f4fe8e15afe3adec" # update after a dataset rebuild
+SOFT_LABEL_DATASET_REVISION = "96819a1cda4e6391735e4078f4fe8e15afe3adec"  # update after a dataset rebuild
 
 # Map each `overall_pref` label to a number for p and d ("slightly" and "clearly" count the same)
 VOTE_VALUES = {

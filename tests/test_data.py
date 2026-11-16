@@ -212,7 +212,7 @@ def test_agreement_bucket_rejects_a_p_between_buckets(p):
 
 
 def test_agreement_bucket_returns_exactly_the_agreement_buckets():
-    """Make sure the `AGREEMENT_BUCKETS` constant and the `agreement_bucket` function don't drift apart."""
+    """`AGREEMENT_BUCKETS` holds exactly the buckets that `agreement_bucket` returns, so they can't drift apart."""
     assert {agreement_bucket(k / 8) for k in range(9)} == set(AGREEMENT_BUCKETS)
 
 

@@ -3,11 +3,11 @@
 p is the share of the four votes of a pair for A (a tie counts half) and d is the population variance of the
 votes. Pairs with the same p can differ in d when some votes are ties. For example, AABB and TTTT both
 give p = 0.5, but AABB (contested) gives d = 0.25 and TTTT (indifferent) gives d = 0. This script checks
-three things on the full dataset (10,461 pairs) at its pinned revision:
+three things on all 10,461 pairs of the soft-label dataset at its pinned revision:
 
-1. List every vote pattern with its p, d, bucket and number of pairs.
-2. Count the values of d for each p to see for how many pairs d adds information beyond p.
-3. Count the vote patterns of the split pairs (p = 0.5) in each split.
+1. Every vote pattern with its p, d, bucket and number of pairs.
+2. The values of d for each p, to see for how many pairs d adds information beyond p.
+3. The vote patterns of the split pairs (p = 0.5) in each split.
 
 Usage:
     uv run python experiments/compare_p_and_d.py

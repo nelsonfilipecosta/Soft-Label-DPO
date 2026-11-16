@@ -27,9 +27,9 @@ VOTE_LETTERS = {
 
 
 def main():
-    # raw config: "default" (10,461 pairs, 4 annotations each)
+    # Raw config from the "default" configuration (10,461 pairs, 4 annotations each)
     raw = load_multipref("default")
-    # binarized config: "human_overall_binarized" (10,461 pairs, 1 majority label each)
+    # Binarized config from the "human_overall_binarized" configuration (10,461 pairs, 1 majority label each)
     binarized = load_multipref("human_overall_binarized")
 
     # Check 1: number of annotations per pair
@@ -64,7 +64,7 @@ def main():
 
     print()
     print("Check 2")
-    print("Vote patterns against 'tie_is_common':")
+    print("Vote patterns against `tie_is_common`:")
     print(f"   {'votes':<7} {'pairs':>6} {'share':>7} {'true':>6} {'false':>6}")
     patterns = sorted({pattern for pattern, _ in pattern_counts})
     for pattern in patterns:
@@ -85,7 +85,7 @@ def main():
     num_annotations = sum(confidence_counts.values())
     print()
     print("Check 3")
-    print("Count of different labels in 'overall_confidence':")
+    print("Count of different labels in `overall_confidence`:")
     # `most_common` sorts by count, so the labels don't need to be known in advance
     # `!r` prints them with quotes, so an empty label ('') or a missing one (None) stands out
     for label, num_labels in confidence_counts.most_common():

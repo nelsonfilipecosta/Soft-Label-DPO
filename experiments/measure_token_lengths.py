@@ -2,9 +2,9 @@
 
 DPO training truncates every sequence (prompt + answer) to `max_length` tokens, which is 1024 in the smoke
 test. TRL 1.14 keeps the start of a sequence, so truncation cuts the end of a long answer and it drops a
-pair whose prompt alone reaches `max_length`. This script tokenizes all 10,461 pairs the way TRL does, with
-the chat template applied to the "prompt" alone, to "prompt + chosen" and to "prompt + rejected" and checks
-three things:
+pair whose prompt alone reaches `max_length`. This script tokenizes all 10,461 pairs of the soft-label
+dataset at its pinned revision the way TRL does, with the chat template applied to the "prompt" alone, to
+"prompt + chosen" and to "prompt + rejected" and checks three things:
 
 1. Percentiles of the number of tokens of each sequence and of the longer sequence of each pair.
 2. A histogram of the longer sequence of each pair.

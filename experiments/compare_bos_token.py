@@ -43,13 +43,13 @@ def pick_device() -> str:
 
 
 def build_inputs(tokenizer, messages: list[dict], keep_bos: bool):
-    """Tokenize a conversation (optionally dropping the template's leading BOS token)."""
+    """Tokenize a conversation, optionally dropping the leading BOS token of the template."""
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    # remove the leading BOS token
+    # Remove the leading BOS token
     if not keep_bos:
         assert text.startswith(tokenizer.bos_token), "Expected the template to start with the BOS token."
         text = text.removeprefix(tokenizer.bos_token)
-    # return the tokenized input as a tensor
+    # Return the tokenized input as a tensor
     return tokenizer(text, return_tensors="pt", add_special_tokens=False)
 
 
@@ -57,9 +57,9 @@ def generate(model, tokenizer, inputs) -> str:
     """Generate a response from the model and return the decoded answer only."""
     inputs = inputs.to(model.device)
     with torch.no_grad():
-        # generate with greedy decoding (do_sample=False) to keep the outputs deterministic
+        # Generate with greedy decoding (do_sample=False) to keep the outputs deterministic
         output = model.generate(**inputs, do_sample=False, max_new_tokens=256)
-    # return only the answer (generate returns prompt and answer)
+    # Return only the answer (generate returns prompt and answer)
     new_tokens = output[0, inputs["input_ids"].shape[1]:]
     return tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
