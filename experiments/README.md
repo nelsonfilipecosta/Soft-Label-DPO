@@ -169,7 +169,7 @@ Split by `prompt_id` and stratify by each prompt's combination of buckets.
 
 ## p against d
 
-- **Script:** [`tabulate_p_and_d.py`](tabulate_p_and_d.py)
+- **Script:** [`compare_p_and_d.py`](compare_p_and_d.py)
 - **Output:** printed to the terminal and copied into the result below.
 
 ### Question

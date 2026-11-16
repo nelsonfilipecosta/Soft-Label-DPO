@@ -1,4 +1,4 @@
-"""Tabulate p against d for the pairs of the soft-label dataset.
+"""Compare p against d for the pairs of the soft-label dataset.
 
 p is the share of a pair's four votes for A (a tie counts half) and d is the population variance of the
 votes. Pairs with the same p can differ in d when some votes are ties. For example, AABB and TTTT both
@@ -10,7 +10,7 @@ three things on the full dataset (10,461) at its pinned revision:
 3. Count the vote patterns of the split pairs (p = 0.5) in each split.
 
 Usage:
-    uv run python experiments/tabulate_p_and_d.py
+    uv run python experiments/compare_p_and_d.py
 """
 
 
