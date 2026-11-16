@@ -37,7 +37,7 @@ Does the leading `{{ bos_token }}` change the answers of the model?
 
 ### Result
 
-The exact wording of the answers changes with the leading token, but their content is of the same quality on all five prompts. This results, however, was based only on five prompts only and the quality judged by eye.
+The exact wording of the answers changes with the leading token, but their content is of the same quality on all five prompts. This result, however, was based only on five prompts only and the quality judged by eye.
 
 ### Decision
 
