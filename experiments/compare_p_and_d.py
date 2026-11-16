@@ -1,9 +1,9 @@
 """Compare p against d for the pairs of the soft-label dataset.
 
-p is the share of a pair's four votes for A (a tie counts half) and d is the population variance of the
+p is the share of the four votes of a pair for A (a tie counts half) and d is the population variance of the
 votes. Pairs with the same p can differ in d when some votes are ties. For example, AABB and TTTT both
 give p = 0.5, but AABB (contested) gives d = 0.25 and TTTT (indifferent) gives d = 0. This script checks
-three things on the full dataset (10,461) at its pinned revision:
+three things on the full dataset (10,461 pairs) at its pinned revision:
 
 1. List every vote pattern with its p, d, bucket and number of pairs.
 2. Count the values of d for each p to see for how many pairs d adds information beyond p.

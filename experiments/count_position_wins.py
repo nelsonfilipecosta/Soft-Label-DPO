@@ -1,13 +1,13 @@
-"""Check whether annotators favour position B in MultiPref.
+"""Check whether annotators favour position B in MultiPref or the stronger models were placed there.
 
 In the MultiPref annotations experiment, B had the majority in 67.7% of the pairs with a majority. So,
 either the annotators favour the answer shown in position B or the stronger models were more often placed
 in position B. In a pair where both answers come from the same model, model strength can't favour either
-position, so B's share there tells the two apart. This script checks three things on all 10,461 pairs of
+position, so the share of B there tells the two apart. This script checks three things on all 10,461 pairs of
 the soft-label dataset at its pinned revision:
 
-1. B's share of the majorities over all pairs with a majority.
-2. B's share of the majorities over the pairs where both answers come from the same model.
+1. The share of the majorities that B has over all pairs with a majority.
+2. The share of the majorities that B has over the pairs where both answers come from the same model.
 3. How often each model appears in position A and in position B.
 
 Usage:
@@ -37,7 +37,7 @@ def wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple[float, flo
 
 
 def print_b_share(label: str, b_wins: int, n: int) -> None:
-    """Print B's share of the majorities with its confidence interval."""
+    """Print the share of the majorities that B has, with its confidence interval."""
     low, high = wilson_interval(b_wins, n)
     print(f"-> {label}: B has the majority in {b_wins:,} of {n:,} pairs ({b_wins / n:.1%}, 95% CI {low:.1%}-{high:.1%})")
 

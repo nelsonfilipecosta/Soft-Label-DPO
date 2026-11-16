@@ -1,8 +1,9 @@
 """Count how the agreement buckets of MultiPref pairs combine within each prompt.
 
-The training data is split by `prompt_id` and stratified by `bucket`, so all pairs of a prompt must go to the
-same split. This script checks three things on the full train split (10,461 pairs) of the "default"
-configuration:
+The training data is split by `prompt_id`, so all pairs of a prompt go to the same split. The split is
+also stratified by `bucket`, so each prompt needs one key to stratify by, even when its pairs are in
+different buckets. This script checks three things on the full train split (10,461 pairs) of the
+"default" configuration:
 
 1. Count the prompts by their number of pairs.
 2. Count the prompts with two or more pairs whose pairs are in different buckets.

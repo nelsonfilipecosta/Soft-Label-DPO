@@ -2,9 +2,9 @@
 
 This script checks three things on the full train split (10,461 pairs) of the "default" configuration:
 
-1. Confirm every preference pair has two crowdworker and two expert annotations.
-2. Compare the vote patterns against `tie_is_common` of the "human_overall_binarized" configuration.
-3. Count the different labels in `overall_confidence` across all annotations.
+1. Whether every preference pair has two crowdworker and two expert annotations.
+2. The vote patterns compared with `tie_is_common` of the "human_overall_binarized" configuration.
+3. The labels of `overall_confidence` across all annotations.
 
 Usage:
     uv run python experiments/explore_multipref.py
