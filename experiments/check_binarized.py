@@ -1,22 +1,16 @@
 """Check the majority labels of the soft-label dataset against the "human_overall_binarized" configuration of MultiPref.
 
-The "human_overall_binarized" configuration of MultiPref keeps one winner per pair, which Ai2 picked from
-the same four votes with their own code. Wherever a pair has a clear majority, it should pick the same chosen
-answer as the soft-label dataset. A disagreement is either a difference between the two rules or a bug in our
-pipeline, such as a swapped A and B, misaligned rows or altered texts. The Ai2 pairs where `tie_is_common` is
-true are left out of the comparison, because Ai2 picked a random winner for those pairs, and our split pairs
-(p = 0.5) are also left out of the comparison, because we picked A by convention.
+Ai2 built "human_overall_binarized" from the same four votes with their own code, so both datasets should
+pick the same chosen answer wherever a pair has a clear majority. A disagreement points to a difference
+between the two rules or to a bug in our pipeline. Pairs with an arbitrary winner are left out. These are
+the pairs where `tie_is_common` is true and our split pairs. Answers are matched by text and not by model
+name, because 27.9% of the pairs compare a model with itself. This script checks four things on all 10,461
+pairs of the soft-label dataset at its pinned revision:
 
-The answers are matched by text and not by model name, because 27.9% of the pairs compare a model with
-itself. This script checks four things on all 10,461 pairs of the soft-label dataset at its pinned revision:
-
-1. Every pair has a binarized pair with the same `comparison_id` and the same prompt text.
-2. On the compared pairs, how often our chosen answer is their chosen answer (agree), their rejected
-   answer (swapped) or neither of the two.
-3. The vote patterns and weighted scores of the agreeing and swapped pairs. The weighted score counts
-   "clearly" as 2, "slightly" as 1 and "Tie" as 0 from the side of our chosen answer, to test whether Ai2
-   weights "clearly" above "slightly".
-4. A few examples of the pairs that match neither answer, printed with `repr` to show hidden whitespace.
+1. Every pair has a binarized pair with the same `comparison_id` and prompt.
+2. How often our chosen answer is their chosen answer (agree), their rejected answer (swapped) or neither.
+3. The vote patterns and weighted scores of the agreeing and swapped pairs.
+4. A few examples of the pairs that match neither answer.
 
 Usage:
     uv run python experiments/check_binarized.py
@@ -141,6 +135,7 @@ def main():
     print("Check 4")
     print(f"-> {len(neither):,} compared pairs match neither answer (showing up to {N_EXAMPLES})")
     for i in neither[:N_EXAMPLES]:
+        # `!r` prints each text with `repr`, which shows hidden spaces and newlines
         print(f"   {pairs['comparison_id'][i]}")
         print(f"   ours:           {our_chosen[i][:200]!r}")
         print(f"   their chosen:   {their_chosen[i][:200]!r}")

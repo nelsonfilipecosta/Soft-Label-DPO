@@ -1,22 +1,14 @@
 """Infer the rule that Ai2 used to build the "human_overall_binarized" configuration of MultiPref.
 
-This is a follow-up to `check_binarized.py`. That experiment found 1,313 compared pairs where Ai2 chose
-the answer that our majority rejected, including 159 pairs where all four votes were for A. Weighting
-"clearly" above "slightly" can't explain them. Looking at the exact labels of these pairs pointed to a
-different rule. Ai2 takes the most common of the five `overall_pref` labels instead of the majority of A
-against B and only "A-is-clearly-better" gives A. When several labels are equally common, Ai2 picks one
-of them at random. The rule was found by looking at the data, so this experiment tests it on all pairs.
+The swapped pairs of `check_binarized.py` pointed to a rule that Ai2 takes the most common of the five
+`overall_pref` labels and maps only "A-is-clearly-better" to A. When several labels are equally common,
+it picks one at random. The rule was found by looking at the data, so this script tests it on all pairs.
+It uses only MultiPref and not our dataset, so a bug in our pipeline can't change the result. This script
+checks four things on all 10,461 pairs of MultiPref at its pinned revision:
 
-The script uses only the raw votes of the "default" configuration and the "human_overall_binarized"
-configuration, so a bug in our own pipeline can't change the result. The side that Ai2 chose is found by
-matching the text of its chosen answer with `completion_a` and `completion_b`. This script checks four
-things on all 10,461 pairs of MultiPref at its pinned revision:
-
-1. Every pair of the "default" configuration has a binarized pair with the same `comparison_id` and the
-   chosen answer of Ai2 matches one of its two answers.
+1. Every pair has a binarized pair and the chosen answer of Ai2 matches one of its two answers.
 2. The side that Ai2 chose for each most common label.
-3. Whether the rule predicts the side that Ai2 chose on every pair with a single most common label that
-   isn't "Tie". The other pairs need a random tie-break, so no rule can predict them.
+3. Whether the rule predicts every pair with a single most common label that isn't "Tie".
 4. Whether `tie_is_common` is true only when "Tie" is among the most common labels.
 
 Usage:
