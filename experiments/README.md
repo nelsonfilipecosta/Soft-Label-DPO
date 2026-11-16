@@ -11,6 +11,7 @@ Each experiment is a one-off check. Each entry gives the question, the setup, th
 | [Token lengths](#token-lengths) | How many pairs does each `max_length` truncate or drop? | Use `max_length` 2,048 in training and evaluation, if it fits in memory. |
 | [Position of the answers](#position-of-the-answers) | Why does B win 67.7% of the majorities: do annotators favour position B or were stronger models placed there? | Keep the data as it is and note the small position bias and the non-random placement in the write-up. |
 | [Binarized labels](#binarized-labels) | Does the chosen answer of each pair match the one in `human_overall_binarized` wherever the majority is clear? | Keep our labels and don't use `human_overall_binarized` as a reference or a baseline. |
+| [Rule of the binarized labels](#rule-of-the-binarized-labels) | Which rule did Ai2 use to build `human_overall_binarized`? | Describe the mapping of "A-is-slightly-better" to B as an error in the binarization, inferred from its output. |
 
 ## BOS token in the chat template
 
@@ -426,7 +427,7 @@ Compared pairs by weighted score, from the side of our chosen answer:
 
 - **The swaps are almost all on the side of A.** 1,285 of the 1,995 compared pairs with an A majority (64.4%) are swapped, against 28 of the 4,781 with a B majority (0.6%). A bug that swapped A and B in our pipeline would flip both sides alike, so the cause lies in how the binarized labels were made.
 - **Weighting "clearly" above "slightly" doesn't explain them.** 1,220 of the 1,313 swapped pairs (92.9%) have a positive weighted score. 159 are AAAA pairs, where all four annotators preferred A.
-- **The five-point labels point to another rule.** A first look at the exact labels of the swapped pairs suggests that Ai2 takes the most common of the five labels instead of the majority of A against B and that only "A-is-clearly-better" gives A. This fits the rule inferred for `tie_is_common` in the [MultiPref annotations](#multipref-annotations) experiment, which also works on the five-point scale. The follow-up [`infer_binarized_rule.py`](infer_binarized_rule.py) tests it on all pairs.
+- **The five-point labels point to another rule.** A first look at the exact labels of the swapped pairs suggests that Ai2 takes the most common of the five labels instead of the majority of A against B and that only "A-is-clearly-better" gives A. This fits the rule inferred for `tie_is_common` in the [MultiPref annotations](#multipref-annotations) experiment, which also works on the five-point scale. The [Rule of the binarized labels](#rule-of-the-binarized-labels) experiment confirms it on all pairs.
 
 **Check 4.** No compared pair matches neither answer, so there were no texts to inspect.
 
@@ -436,4 +437,61 @@ Keep the labels of the soft-label dataset and don't use `human_overall_binarized
 
 - **Our pipeline passes the check.** IDs, prompts and answer texts line up for all 10,461 pairs and 99.4% of the compared pairs with a B majority agree.
 - **The binarized labels flip most A majorities.** 64.4% of the compared pairs with an A majority have B as the winner, including 159 unanimous ones. Training or evaluating on these labels would use many winners that contradict the votes.
-- **Explain the swaps before quoting them.** The rule behind them is a hypothesis until [`infer_binarized_rule.py`](infer_binarized_rule.py) tests it. Until then, describe them as a disagreement with the votes and not as a confirmed bug in the binarization.
+- **The swaps come from the binarization.** The [Rule of the binarized labels](#rule-of-the-binarized-labels) experiment finds that Ai2 maps "A-is-slightly-better" to B, which explains them.
+
+## Rule of the binarized labels
+
+- **Script:** [`infer_binarized_rule.py`](infer_binarized_rule.py)
+- **Output:** printed to the terminal and copied into the result below.
+
+### Question
+
+The [Binarized labels](#binarized-labels) experiment found 1,313 compared pairs where Ai2 chose the answer that our majority rejected, including 159 AAAA pairs. The five-point labels of these pairs suggested a rule. Ai2 takes the most common of the five `overall_pref` labels instead of the majority of A against B. When several labels are equally common, it picks one of them at random. Only "A-is-clearly-better" then gives A. The rule was found by looking at the data, so it needs a test on all pairs:
+
+1. Does the chosen answer of Ai2 match one of the two answers of every pair?
+2. Which side did Ai2 choose for each most common label?
+3. Does the rule predict the side that Ai2 chose on every pair it can predict?
+4. Is `tie_is_common` true only when Tie is among the most common labels?
+
+### Setup
+
+- Dataset: `allenai/multipref` at revision `12910233a0238a997ebe425656e9dfed7b0ff031`, the `train` split of the `default` and `human_overall_binarized` configurations (10,461 pairs each), matched by `comparison_id`. The soft-label dataset isn't used, so a bug in our pipeline can't change the result.
+- The side that Ai2 chose is found by matching the text of its chosen answer with `completion_a` and `completion_b`.
+- The most common label is taken over the four `overall_pref` labels, with "slightly" and "clearly" kept apart. Pairs with several equally common labels are counted as "several labels tie".
+- The rule can only predict a pair with a single most common label that isn't Tie. The other pairs need a random tie-break.
+
+### Result
+
+**Check 1.** The side that Ai2 chose is known for all 10,461 pairs. Ai2 chose B in 8,095 of them (77.4%).
+
+**Check 2.** Side that Ai2 chose by most common label:
+
+| Most common label | A | B | Share B |
+| --- | ---: | ---: | ---: |
+| A-is-clearly-better | 623 | 0 | 0.0% |
+| A-is-slightly-better | 0 | 1,110 | 100.0% |
+| Tie | 1,237 | 1,165 | 48.5% |
+| B-is-slightly-better | 0 | 2,069 | 100.0% |
+| B-is-clearly-better | 0 | 1,972 | 100.0% |
+| several labels tie | 506 | 1,779 | 77.9% |
+
+- **Only "A-is-clearly-better" gives A.** All 623 pairs whose most common label is "A-is-clearly-better" have A as the winner. All 1,110 pairs whose most common label is "A-is-slightly-better" have B.
+- **A most common Tie gives a coin flip.** Ai2 chose B in 48.5% of the 2,402 pairs whose most common label is Tie, as a random pick would.
+- **Ties between labels lean to B.** Ai2 chose B in 77.9% of the 2,285 pairs with several most common labels. A random pick among the tied labels gives A only when it lands on "A-is-clearly-better", so B wins most of these pairs.
+
+**Check 3.** The rule predicts the side that Ai2 chose in all 5,774 pairs with a single most common label that isn't Tie. The other 4,687 pairs need a random tie-break.
+
+**Check 4.**
+
+- **`tie_is_common` is never true without Tie among the most common labels.** All 2,930 flagged pairs have Tie among them, as the [MultiPref annotations](#multipref-annotations) experiment inferred.
+- **890 pairs have Tie among the most common labels but aren't flagged.** This fits a random pick among the tied labels that landed on a label other than Tie. It is a guess, because the script doesn't see which label the pick landed on.
+
+### Decision
+
+Describe the mapping of "A-is-slightly-better" to B as an error in `human_overall_binarized`, and keep the binarized labels out of training and evaluation.
+
+- **The rule is exact.** It predicts all 5,774 pairs it can predict, with no exception, and the other pairs behave as a random tie-break would.
+- **The mapping of "A-is-slightly-better" to B is almost certainly an error.** No sensible design maps "A is slightly better" to B, and its mirror "B-is-slightly-better" gives B as expected. The rule is inferred from the output and not read from the code that Ai2 used, so the write-up should say so.
+- **The error inflates B.** Ai2 chose B in 77.4% of all pairs. In the votes, B has 67.7% of the majorities, and most of that comes from the [placement of the models](#position-of-the-answers).
+- **The most common label differs from a majority even without the error.** A pair with A-clearly, A-slightly, Tie and Tie has an A majority (p = 0.75), but its most common label is Tie, so it gets a random winner. This is why `tie_is_common` flags some AATT and BBTT pairs.
+- **Reporting it to Ai2 is optional.** The dataset is public and the error decides the winner of 1,110 pairs. A short note on the discussion page of the dataset would help other users, but it is outside this project.
