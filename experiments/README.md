@@ -1,22 +1,19 @@
 # Experiments
 
-Each experiment is a one-off check. Each entry gives the question, the setup, the result and the decision it led to.
+These experiments were designed to answer questions that came up while setting up the model and preparing the data. Each experiment answers a single question and led to a decision about the pipeline, so together they explain why the data and the setup are the way they are. Each experiment has its own section below, with the question, the setup, the result and the decision. The table lists the experiments in the order they were run and links to each section.
 
 | Experiment | Question | Decision |
 | --- | --- | --- |
-| [BOS token in the chat template](#bos-token-in-the-chat-template) | Does the leading `<\|endoftext\|>` in the chat template affect the model's answers? | Keep the template as shipped and use it everywhere. |
-| [MultiPref annotations](#multipref-annotations) | Does every pair have four votes and which pairs does `tie_is_common` flag? | Build the labels from the raw votes and use `human_overall_binarized` only for the spot-check. |
-| [Agreement buckets per prompt](#agreement-buckets-per-prompt) | Do the pairs of one prompt land in the same agreement bucket? | Stratify the split by each prompt's combination of buckets. |
+| [BOS token in the chat template](#bos-token-in-the-chat-template) | Does the leading `<\|endoftext\|>` in the chat template affect the answers of the model? | Keep the template as shipped and use it everywhere. |
+| [MultiPref annotations](#multipref-annotations) | Does every pair have four votes? And which pairs does `tie_is_common` flag? | Build the labels from the raw votes and use `human_overall_binarized` only for the spot-check. |
+| [Agreement buckets per prompt](#agreement-buckets-per-prompt) | Do the pairs of one prompt land in the same agreement bucket? | Stratify the split by the combination of buckets of each prompt. |
 | [p against d](#p-against-d) | For how many pairs does d add information beyond p and how are split pairs divided by vote pattern? | Report split pairs overall and by vote pattern, with confidence intervals. |
 | [Token lengths](#token-lengths) | How many pairs does each `max_length` truncate or drop? | Use `max_length` 2,048 in training and evaluation, if it fits in memory. |
-| [Position of the answers](#position-of-the-answers) | Why does B win 67.7% of the majorities: do annotators favour position B or were stronger models placed there? | Keep the data as it is and note the small position bias and the non-random placement in the write-up. |
-| [Binarized labels](#binarized-labels) | Does the chosen answer of each pair match the one in `human_overall_binarized` wherever the majority is clear? | Keep our labels and don't use `human_overall_binarized` as a reference or a baseline. |
+| [Position of the answers](#position-of-the-answers) | Why does B win 67.7% of the majorities? Do annotators favour position B or were stronger models placed there? | Keep the data as it is and note the small position bias and the non-random placement in the write-up. |
+| [Binarized labels](#binarized-labels) | Does the chosen answer of each pair match the one in `human_overall_binarized` on the pairs where both have a clear winner? | Keep our labels and don't use `human_overall_binarized` as ground truth or as a baseline. |
 | [Rule of the binarized labels](#rule-of-the-binarized-labels) | Which rule did Ai2 use to build `human_overall_binarized`? | Describe the mapping of "A-is-slightly-better" to B as an error in the binarization, inferred from its output. |
 
 ## BOS token in the chat template
-
-- **Script:** [`compare_bos_token.py`](compare_bos_token.py)
-- **Output:** [`compare_bos_token_output.md`](compare_bos_token_output.md)
 
 ### Question
 
@@ -28,10 +25,11 @@ What causes the seasons on Earth?
 <|assistant|>
 ```
 
-Does the leading `{{ bos_token }}` change the model's answers?
+Does the leading `{{ bos_token }}` change the answers of the model?
 
 ### Setup
 
+- Script: [`compare_bos_token.py`](compare_bos_token.py).
 - Model: `allenai/OLMo-2-0425-1B-SFT` at revision `0d85a3d037876ce6ac7d4311d994400fc66ac27f`.
 - Five prompts for different skills: factual, format following, reasoning, opinion and refusal.
 - Each prompt run twice: with the template as shipped and with the leading `<|endoftext|>` removed.
@@ -39,9 +37,7 @@ Does the leading `{{ bos_token }}` change the model's answers?
 
 ### Result
 
-The exact wording of the answers changes with the leading token, but their content is of the same quality on all five prompts.
-
-**Note:** The result was based on five prompts only and the quality judged by eye.
+The exact wording of the answers changes with the leading token, but their content is of the same quality on all five prompts. This results, however, was based only on five prompts only and the quality judged by eye.
 
 ### Decision
 
@@ -49,12 +45,9 @@ Keep the chat template as shipped and use it everywhere: DPO training, held-out 
 
 - **No evidence to justify a change.** No difference in quality was found.
 - **The tools use it by default.** TRL and the eval harnesses build prompts with `apply_chat_template`. Overriding the template in each tool risks a silent mismatch.
-- **Consistency matters more than the choice.** DPO compares the policy's log-probabilities with the reference model's on the same prompt, so a small effect of the leading token appears on both sides and largely cancels. Mixing formats between training and evaluation would not cancel.
+- **Consistency matters more than the choice.** DPO compares the log-probabilities of the policy with those of the reference model on the same prompt, so a small effect of the leading token appears on both sides and largely cancels. Mixing formats between training and evaluation would not cancel.
 
 ## MultiPref annotations
-
-- **Script:** [`explore_multipref.py`](explore_multipref.py)
-- **Output:** printed to the terminal and copied into the result below.
 
 ### Question
 
@@ -66,9 +59,10 @@ The soft labels need the four human votes of every pair, which only the `default
 
 ### Setup
 
+- Script: [`explore_multipref.py`](explore_multipref.py).
 - Dataset: `allenai/multipref` at revision `12910233a0238a997ebe425656e9dfed7b0ff031`, the `train` split of the `default` and `human_overall_binarized` configurations (10,461 pairs each), matched by `comparison_id`.
-- Each annotator's `overall_pref` mapped to A, B or T (tie). "Slightly" and "clearly" both count as a full vote.
-- A pair's vote pattern is its four votes in sorted order, such as BBTT, so the order of the annotators doesn't matter.
+- The `overall_pref` of each annotator mapped to A, B or T (tie). "Slightly" and "clearly" both count as a full vote.
+- The vote pattern of a pair is its four votes in sorted order, such as BBTT, so the order of the annotators doesn't matter.
 - p is the share of the four votes for A, with ties counting half.
 
 ### Result
@@ -95,11 +89,11 @@ The soft labels need the four human votes of every pair, which only the `default
 | BTTT | 488 | 4.7% | 488 | 0 |
 | TTTT | 352 | 3.4% | 352 | 0 |
 
-- **`tie_is_common` is true for 2,930 pairs (28.0%).** It is always true when Tie is the only most common vote (ABTT, ATTT, BTTT and TTTT) and never true when there is no Tie vote or when three votes agree.
-- **It is sometimes true** for AATT (68%), BBTT (64%), AABT (11%) and ABBT (11%), so it depends on more than the number of A, B and T votes. The following rule fits every row of the table: a pair is flagged when Tie is the most common label on the five-point scale, with ties between labels broken by order or at random. This rule is inferred from the counts, not read from Ai2's code.
-- **AABB pairs are never flagged** (755, 7.2%), although a 2–2 split has no majority. Their binarized winner cannot follow from the votes and filtering on `tie_is_common` does not remove them.
+- **`tie_is_common` is true for 2,930 pairs (28.0%).** It is always true when "Tie" is the only most common vote (ABTT, ATTT, BTTT and TTTT) and never true when there is no "Tie" vote or when three votes agree.
+- **It is sometimes true** for AATT (68%), BBTT (64%), AABT (11%) and ABBT (11%), so it depends on more than the number of A, B and T votes. Every row of the table appears to fit a rule that flags a pair when "Tie" is the most common label on the five-point scale, with ties between labels broken by order or at random. This rule is inferred from the counts, not read from the code that Ai2 used. Check 4 of the [Rule of the binarized labels](#rule-of-the-binarized-labels) experiment later supports it, as `tie_is_common` is never true unless "Tie" is among the most common labels.
+- **AABB pairs are never flagged** (755, 7.2%), although a 2–2 split has no majority. Their binarized winner cannot follow from a majority of A against B and filtering on `tie_is_common` does not remove them.
 - **Pairs without a majority** (p = 0.5: AABB, ABTT and TTTT) are 1,836 of the 10,461 pairs (17.6%).
-- **B wins far more often than A.** Of the 8,625 pairs with a majority, B has it in 5,842 (67.7%) and A in 2,783 (32.3%). Annotators may favour position B or the stronger model may more often be placed in position B. The [Position of the answers](#position-of-the-answers) experiment finds that it is mostly the placement of the models.
+- **B wins far more often than A.** Of the 8,625 pairs with a majority, B has it in 5,842 (67.7%) and A in 2,783 (32.3%). Annotators may favour position B or the stronger model may more often be placed in position B. The [Position of the answers](#position-of-the-answers) experiment finds that it is mostly the placement of the models that explains the difference.
 
 **Check 3.** Every annotation has one of four labels and none is empty or missing.
 
@@ -115,15 +109,12 @@ The soft labels need the four human votes of every pair, which only the `default
 Build the labels from the four raw votes in `default` and use `human_overall_binarized` only to spot-check them.
 
 - **The raw votes are complete.** Every pair has four votes, so p is computed the same way for all of them.
-- **`tie_is_common` doesn't match the soft labels' rule.** It flags pairs with a clear majority under that rule, such as BBTT (p = 0.25), and misses pairs with none, such as AABB.
-- **For the spot-check,** leave out pairs where `tie_is_common` is true and pairs with p = 0.5. Match answers by their text and not by model name, because some pairs compare a model with itself. See [Binarized labels](#binarized-labels).
+- **`tie_is_common` doesn't match the rule of the soft labels.** It flags pairs with a clear majority under that rule, such as BBTT (p = 0.25), and misses pairs with none, such as AABB.
+- **For the spot-check,** leave out pairs where `tie_is_common` is true and pairs with p = 0.5. Match answers by their text and not by model name, because some pairs compare a model with itself. The [Binarized labels](#binarized-labels) experiment ran this check and found no error in our labels. It also found that `human_overall_binarized` gives B the win in 64.4% of the compared pairs with an A majority, because Ai2 maps "A-is-slightly-better" to B, as the [Rule of the binarized labels](#rule-of-the-binarized-labels) experiment confirms.
 - **Every vote counts fully, whatever its confidence.** Only 4.7% of votes are `not-confident` or `random-guess`, so weighting by confidence stays an optional ablation. It would need a number for each of the four labels.
-- **B's advantage needs a follow-up check.** In pairs where both answers come from the same model, a stronger model cannot be the cause, so a B advantage there would point to annotators favouring a position. See [Position of the answers](#position-of-the-answers).
+- **The advantage of B needs a follow-up check.** In pairs where both answers come from the same model, a stronger model cannot be the cause, so a B advantage there would point to annotators favouring a position. The [Position of the answers](#position-of-the-answers) experiment found that B still has 55.4% of the majorities in these pairs, so annotators favour B a little, but most of the advantage comes from the stronger models being placed in B more often.
 
 ## Agreement buckets per prompt
-
-- **Script:** [`count_prompt_buckets.py`](count_prompt_buckets.py)
-- **Output:** printed to the terminal and copied into the result below.
 
 ### Question
 
@@ -135,19 +126,20 @@ The data is split 80/10/10 by `prompt_id`, so all pairs of a prompt go to the sa
 
 ### Setup
 
+- Script: [`count_prompt_buckets.py`](count_prompt_buckets.py).
 - Dataset: `allenai/multipref` at revision `12910233a0238a997ebe425656e9dfed7b0ff031`, the `train` split of the `default` configuration (10,461 pairs).
-- Each pair's bucket comes from `vote_columns` in [`data.py`](../src/soft_label_dpo/data.py), using the rule of the [MultiPref annotations](#multipref-annotations) experiment.
-- A prompt's combination is the set of its pairs' buckets, such as moderate + split, so the order of the pairs doesn't matter.
+- The bucket of each pair comes from its p, with the thresholds of `agreement_bucket` in [`data.py`](../src/soft_label_dpo/data.py).
+- The combination of a prompt is the set of the buckets of its pairs, such as moderate + split, so the order of the pairs doesn't matter.
 
 ### Result
 
-**Check 1.** The 10,461 pairs come from 5,323 prompts: 5,138 prompts have two pairs and 185 have one. No prompt has more than two.
+**Check 1.** The 10,461 pairs come from 5,323 prompts, of which 5,138 have two pairs and 185 have one. No prompt has more than two.
 
 **Check 2.** 3,044 of the 5,138 prompts with two pairs (59.2%) have their pairs in different buckets. These prompts hold 6,088 of the 10,461 pairs.
 
 **Check 3.**
 
-| Buckets of the prompt's pairs | Prompts |
+| Buckets of the pairs of the prompt | Prompts |
 | --- | ---: |
 | moderate + strong | 1,581 |
 | moderate | 1,450 |
@@ -156,21 +148,18 @@ The data is split 80/10/10 by `prompt_id`, so all pairs of a prompt go to the sa
 | split + strong | 498 |
 | split | 200 |
 
-- **Agreement depends on the answers, not only on the prompt.** For 498 prompts, one pair is strong and the other is split: the same question got near-unanimous votes for one pair of answers and a 2–2 split for the other.
+- **Agreement depends on the answers, not only on the prompt.** For 498 prompts, one pair is strong and the other is split, which means the same question got near-unanimous votes for one pair of answers and a 2–2 split for the other.
 - **Every combination is large enough to stratify by.** The smallest, split only, still has about 20 prompts for each of the validation and test splits.
 
 ### Decision
 
-Split by `prompt_id` and stratify by each prompt's combination of buckets.
+Split by `prompt_id` and stratify by the combination of buckets of each prompt.
 
-- **A single bucket per prompt would hide too much.** Mixed prompts are the majority, so any one bucket per prompt (the first pair's or the lowest-agreement one) would leave the shares of some buckets to chance.
+- **A single bucket per prompt would hide too much.** Mixed prompts are the majority, so any one bucket per prompt (the bucket of the first pair or the lowest one) would leave the shares of some buckets to chance.
 - **The combination balances all three buckets.** Each of the six groups is split 80/10/10 on its own, so every split gets nearly the same share of strong, moderate and split pairs.
-- **Check the result after splitting.** The bucket shares of the pairs, not of the prompts, should be similar in all three splits.
+- **Check the result after splitting.** The bucket shares of the pairs, not of the prompts, should be similar in all three splits. The built dataset confirms it, with 30.9–31.4% strong, 51.0–51.5% moderate and 17.4–17.6% split pairs in every split.
 
 ## p against d
-
-- **Script:** [`compare_p_and_d.py`](compare_p_and_d.py)
-- **Output:** printed to the terminal and copied into the result below.
 
 ### Question
 
@@ -182,6 +171,7 @@ Each pair gets two numbers from its four votes: p, the share for A with ties cou
 
 ### Setup
 
+- Script: [`compare_p_and_d.py`](compare_p_and_d.py).
 - Dataset: `nelsonfilipecosta/multipref-soft-labels` at revision `96819a1cda4e6391735e4078f4fe8e15afe3adec`, all three splits (10,461 pairs). It was built by [`build_dataset.py`](../scripts/build_dataset.py) from `allenai/multipref` at revision `12910233a0238a997ebe425656e9dfed7b0ff031`.
 - p, d and the bucket come from `vote_columns` in [`data.py`](../src/soft_label_dpo/data.py): A = 1, Tie = 0.5 and B = 0, with "slightly" and "clearly" counting the same.
 
@@ -207,7 +197,7 @@ Each pair gets two numbers from its four votes: p, the share for A with ties cou
 | BBBT | 0.125 | 0.046875 | strong | 1,001 | 9.6% |
 | BBBB | 0.000 | 0.000000 | strong | 1,502 | 14.4% |
 
-**Check 2.** d adds information beyond p for 7,182 of the 10,461 pairs (68.7%): every moderate and every split pair. Each p of a strong pair (0, 0.125, 0.875 and 1) comes with one value of d, each p of a moderate pair with two and p = 0.5 with three.
+**Check 2.** d adds information beyond p for 7,182 of the 10,461 pairs (68.7%), which are all the moderate and split pairs. Each p of a strong pair (0, 0.125, 0.875 and 1) comes with one value of d, each p of a moderate pair with two and p = 0.5 with three.
 
 - **Within a moderate p, d tells ties from opposing votes.** AATT and AAAB both give p = 0.75. In AATT, the two votes that don't prefer A are ties, so d = 0.0625. In AAAB, one annotator prefers B, so d = 0.1875. The soft labels give both the same target, q = 0.75.
 - **d doesn't follow the level of agreement.** ATTT has less agreement than AAAB (q = 0.625 against 0.75) but also a lower d (0.046875 against 0.1875), because none of its votes prefers the other answer.
@@ -233,9 +223,6 @@ Report the results on split pairs overall and by vote pattern, each with a confi
 
 ## Token lengths
 
-- **Script:** [`measure_token_lengths.py`](measure_token_lengths.py)
-- **Output:** printed to the terminal and copied into the result below.
-
 ### Question
 
 DPO training cuts every sequence (prompt + answer) to `max_length` tokens, which is 1,024 in the smoke test. TRL 1.14 keeps the start of a sequence, so a long answer loses its end, and it drops a pair from training when its prompt alone reaches `max_length`. Before choosing `max_length` for the real runs:
@@ -246,6 +233,7 @@ DPO training cuts every sequence (prompt + answer) to `max_length` tokens, which
 
 ### Setup
 
+- Script: [`measure_token_lengths.py`](measure_token_lengths.py).
 - Dataset: `nelsonfilipecosta/multipref-soft-labels` at revision `96819a1cda4e6391735e4078f4fe8e15afe3adec`, all three splits (10,461 pairs).
 - Tokenizer: `allenai/OLMo-2-0425-1B-SFT` at revision `0d85a3d037876ce6ac7d4311d994400fc66ac27f`, with the chat template applied as TRL 1.14 does: to the prompt alone with the generation prompt, to prompt + chosen and to prompt + rejected.
 - A pair is truncated when the longer of its two sequences has more than `max_length` tokens and dropped when its prompt alone has `max_length` tokens or more.
@@ -288,7 +276,7 @@ DPO training cuts every sequence (prompt + answer) to `max_length` tokens, which
 | 2,048 | 115 (1.1%) | 1.2% | 1.1% | 0.9% | 31 (0.3%) |
 | 4,096 | 10 (0.1%) | 0.2% | 0.1% | 0.0% | 0 |
 
-- **1,024 truncates 5.5% of the pairs and drops 1.5%.** The dropped pairs are among the truncated ones: their prompt alone fills `max_length`, so no answer token is left to train on.
+- **1,024 truncates 5.5% of the pairs and drops 1.5%.** The dropped pairs are among the truncated ones, because their prompt alone fills `max_length` and leaves no answer token to train on.
 - **Truncation hits the three buckets about equally,** with split pairs slightly less often, so no `max_length` changes the balance of the buckets much.
 - **2,048 truncates 1.1% and drops 0.3%,** and 4,096 truncates only the 10 longest pairs.
 
@@ -303,19 +291,17 @@ Use `max_length` 2,048 for training and for the evaluation of every condition, i
 
 ## Position of the answers
 
-- **Script:** [`count_position_wins.py`](count_position_wins.py)
-- **Output:** printed to the terminal and copied into the result below.
-
 ### Question
 
-In the [MultiPref annotations](#multipref-annotations) experiment, B had the majority in 67.7% of the pairs with a majority. Either the annotators favour the answer shown in position B or the stronger models were more often placed in position B. In a pair where both answers come from the same model, model strength can't favour either position, so B's share there tells the two apart:
+In the [MultiPref annotations](#multipref-annotations) experiment, B had the majority in 67.7% of the pairs with a majority. Either the annotators favour the answer shown in position B or the stronger models were more often placed in position B. In a pair where both answers come from the same model, model strength can't favour either position, so the share of B there tells the two apart:
 
-1. What is B's share of the majorities over all pairs with a majority?
+1. What share of the majorities does B have over all pairs with a majority?
 2. What is it over the pairs where both answers come from the same model?
 3. How often does each model appear in position A and in position B?
 
 ### Setup
 
+- Script: [`count_position_wins.py`](count_position_wins.py).
 - Dataset: `nelsonfilipecosta/multipref-soft-labels` at revision `96819a1cda4e6391735e4078f4fe8e15afe3adec`, all three splits (10,461 pairs).
 - The models in positions A and B are recovered from `chosen_model`, `rejected_model` and `chosen_is_a`.
 - B has the majority when the pair isn't split (p ≠ 0.5) and the chosen answer isn't A.
@@ -333,8 +319,8 @@ In the [MultiPref annotations](#multipref-annotations) experiment, B had the maj
 | different models | 6,352 | 4,583 (72.2%) | 71.0%–73.2% |
 
 - **Annotators favour position B a little.** With the same model in both positions, B still has 55.4% of the majorities and the interval excludes 50%.
-- **Most of B's advantage comes from the models.** The 55.4% is far below the 67.7% overall and the interval excludes it.
-- **Pairs of the same model are split more often:** 646 of 2,919 (22.1%) against 1,190 of 7,542 (15.8%) for pairs of different models. Annotators disagree more when the two answers are alike.
+- **Most of the advantage of B comes from the models.** The 55.4% is far below the 67.7% overall and the interval excludes it.
+- **Pairs of the same model are split more often.** 646 of 2,919 (22.1%) are split, against 1,190 of 7,542 (15.8%) for pairs of different models. Annotators disagree more when the two answers are alike.
 
 **Check 3.** Appearances of each model in position A and B over all pairs:
 
@@ -361,9 +347,6 @@ Keep the data as it is and note both findings in the write-up.
 
 ## Binarized labels
 
-- **Script:** [`check_binarized.py`](check_binarized.py)
-- **Output:** printed to the terminal and copied into the result below.
-
 ### Question
 
 The `human_overall_binarized` configuration of MultiPref keeps one winner per pair, which Ai2 picked from the same four votes with their own code. Wherever a pair has a clear majority, it should pick the same chosen answer as the soft-label dataset. A disagreement is either a difference between the two rules or a bug in our pipeline, such as a swapped A and B, misaligned rows or altered texts. The unit tests check each function on hand-made rows. This check covers the real data, all functions chained together and the dataset as saved on the Hub:
@@ -375,10 +358,11 @@ The `human_overall_binarized` configuration of MultiPref keeps one winner per pa
 
 ### Setup
 
+- Script: [`check_binarized.py`](check_binarized.py).
 - Dataset: `nelsonfilipecosta/multipref-soft-labels` at revision `96819a1cda4e6391735e4078f4fe8e15afe3adec`, all three splits (10,461 pairs), and `allenai/multipref` at revision `12910233a0238a997ebe425656e9dfed7b0ff031`, the `train` split of the `human_overall_binarized` configuration (10,461 pairs), matched by `comparison_id`.
 - Pairs whose winner is arbitrary are left out. These are the 2,930 pairs where `tie_is_common` is true, for which Ai2 picked a random winner, and our split pairs (p = 0.5), for which A is chosen by convention. This leaves 6,776 pairs.
 - Answers are matched by text and not by model name, because 27.9% of the pairs compare a model with itself. A pair agrees when our chosen answer is their chosen answer and is swapped when it is their rejected answer.
-- The weighted score counts "clearly" as 2, "slightly" as 1 and Tie as 0, from the side of our chosen answer. If Ai2 only weighted "clearly" above "slightly", every swapped pair would have a score of 0 or below.
+- The weighted score counts "clearly" as 2, "slightly" as 1 and "Tie" as 0, from the side of our chosen answer. If Ai2 only weighted "clearly" above "slightly", every swapped pair would have a score of 0 or below.
 
 ### Result
 
@@ -433,7 +417,7 @@ Compared pairs by weighted score, from the side of our chosen answer:
 
 ### Decision
 
-Keep the labels of the soft-label dataset and don't use `human_overall_binarized` as a reference or a baseline.
+Keep the labels of the soft-label dataset and don't use `human_overall_binarized` as ground truth or as a baseline.
 
 - **Our pipeline passes the check.** IDs, prompts and answer texts line up for all 10,461 pairs and 99.4% of the compared pairs with a B majority agree.
 - **The binarized labels flip most A majorities.** 64.4% of the compared pairs with an A majority have B as the winner, including 159 unanimous ones. Training or evaluating on these labels would use many winners that contradict the votes.
@@ -441,24 +425,22 @@ Keep the labels of the soft-label dataset and don't use `human_overall_binarized
 
 ## Rule of the binarized labels
 
-- **Script:** [`infer_binarized_rule.py`](infer_binarized_rule.py)
-- **Output:** printed to the terminal and copied into the result below.
-
 ### Question
 
-The [Binarized labels](#binarized-labels) experiment found 1,313 compared pairs where Ai2 chose the answer that our majority rejected, including 159 AAAA pairs. The five-point labels of these pairs suggested a rule. Ai2 takes the most common of the five `overall_pref` labels instead of the majority of A against B. When several labels are equally common, it picks one of them at random. Only "A-is-clearly-better" then gives A. The rule was found by looking at the data, so it needs a test on all pairs:
+The [Binarized labels](#binarized-labels) experiment found 1,313 compared pairs where Ai2 chose the answer that our majority rejected, including 159 AAAA pairs. The five-point labels of these pairs suggested a rule that Ai2 takes the most common of the five `overall_pref` labels instead of the majority of A against B. When several labels are equally common, it picks one of them at random. Only "A-is-clearly-better" then gives A. The rule was found by looking at the data, so it needs a test on all pairs:
 
 1. Does the chosen answer of Ai2 match one of the two answers of every pair?
 2. Which side did Ai2 choose for each most common label?
 3. Does the rule predict the side that Ai2 chose on every pair it can predict?
-4. Is `tie_is_common` true only when Tie is among the most common labels?
+4. Is `tie_is_common` true only when "Tie" is among the most common labels?
 
 ### Setup
 
+- Script: [`infer_binarized_rule.py`](infer_binarized_rule.py).
 - Dataset: `allenai/multipref` at revision `12910233a0238a997ebe425656e9dfed7b0ff031`, the `train` split of the `default` and `human_overall_binarized` configurations (10,461 pairs each), matched by `comparison_id`. The soft-label dataset isn't used, so a bug in our pipeline can't change the result.
 - The side that Ai2 chose is found by matching the text of its chosen answer with `completion_a` and `completion_b`.
 - The most common label is taken over the four `overall_pref` labels, with "slightly" and "clearly" kept apart. Pairs with several equally common labels are counted as "several labels tie".
-- The rule can only predict a pair with a single most common label that isn't Tie. The other pairs need a random tie-break.
+- The rule can only predict a pair with a single most common label that isn't "Tie". The other pairs need a random tie-break.
 
 ### Result
 
@@ -476,15 +458,15 @@ The [Binarized labels](#binarized-labels) experiment found 1,313 compared pairs 
 | several labels tie | 506 | 1,779 | 77.9% |
 
 - **Only "A-is-clearly-better" gives A.** All 623 pairs whose most common label is "A-is-clearly-better" have A as the winner. All 1,110 pairs whose most common label is "A-is-slightly-better" have B.
-- **A most common Tie gives a coin flip.** Ai2 chose B in 48.5% of the 2,402 pairs whose most common label is Tie, as a random pick would.
+- **A most common "Tie" gives a coin flip.** Ai2 chose B in 48.5% of the 2,402 pairs whose most common label is "Tie", as a random pick would.
 - **Ties between labels lean to B.** Ai2 chose B in 77.9% of the 2,285 pairs with several most common labels. A random pick among the tied labels gives A only when it lands on "A-is-clearly-better", so B wins most of these pairs.
 
-**Check 3.** The rule predicts the side that Ai2 chose in all 5,774 pairs with a single most common label that isn't Tie. The other 4,687 pairs need a random tie-break.
+**Check 3.** The rule predicts the side that Ai2 chose in all 5,774 pairs with a single most common label that isn't "Tie". The other 4,687 pairs need a random tie-break.
 
 **Check 4.**
 
-- **`tie_is_common` is never true without Tie among the most common labels.** All 2,930 flagged pairs have Tie among them, as the [MultiPref annotations](#multipref-annotations) experiment inferred.
-- **890 pairs have Tie among the most common labels but aren't flagged.** This fits a random pick among the tied labels that landed on a label other than Tie. It is a guess, because the script doesn't see which label the pick landed on.
+- **`tie_is_common` is never true without "Tie" among the most common labels.** All 2,930 flagged pairs have "Tie" among them, as the [MultiPref annotations](#multipref-annotations) experiment inferred.
+- **890 pairs have "Tie" among the most common labels but aren't flagged.** This fits a random pick among the tied labels that landed on a label other than "Tie". It is a guess, because the script doesn't see which label the pick landed on.
 
 ### Decision
 
@@ -493,5 +475,5 @@ Describe the mapping of "A-is-slightly-better" to B as an error in `human_overal
 - **The rule is exact.** It predicts all 5,774 pairs it can predict, with no exception, and the other pairs behave as a random tie-break would.
 - **The mapping of "A-is-slightly-better" to B is almost certainly an error.** No sensible design maps "A is slightly better" to B, and its mirror "B-is-slightly-better" gives B as expected. The rule is inferred from the output and not read from the code that Ai2 used, so the write-up should say so.
 - **The error inflates B.** Ai2 chose B in 77.4% of all pairs. In the votes, B has 67.7% of the majorities, and most of that comes from the [placement of the models](#position-of-the-answers).
-- **The most common label differs from a majority even without the error.** A pair with A-clearly, A-slightly, Tie and Tie has an A majority (p = 0.75), but its most common label is Tie, so it gets a random winner. This is why `tie_is_common` flags some AATT and BBTT pairs.
+- **The most common label differs from a majority even without the error.** A pair with "A-clearly", "A-slightly", "Tie" and "Tie" has an A majority (p = 0.75), but its most common label is "Tie", so it gets a random winner. This is why `tie_is_common` flags some AATT and BBTT pairs.
 - **Reporting it to Ai2 is optional.** The dataset is public and the error decides the winner of 1,110 pairs. A short note on the discussion page of the dataset would help other users, but it is outside this project.
