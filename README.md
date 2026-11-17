@@ -20,6 +20,12 @@ On held-out pairs, the main metric is the rank correlation between the decisiven
 
 **Project plan** (private working doc): [MultiPref DPO Project Plan](https://claude.ai/artifact/KDuz7HwGZUhS6bQrEkUWjZ)
 
+## Status
+
+- **Data preparation (done).** The four votes on each of the 10,461 MultiPref pairs are turned into soft labels and the pairs are split by prompt into train, validation and test. Most choices were tested with a small experiment first. [docs/data.md](docs/data.md) describes every step and the [experiments README](experiments/README.md) has the full results. The checks also found that the `human_overall_binarized` configuration of MultiPref picks the opposite winner in 64.4% of the compared pairs with an A majority.
+- **Training pipeline (tested).** Two smoke tests run DPO end to end, locally and on a rented GPU (see [Smoke tests](#smoke-tests)).
+- **Next.** Train the three conditions with three seeds each, then evaluate them on the test split.
+
 ## Smoke tests
 
 Two short DPO runs check the training pipeline end to end before any real experiment.
@@ -40,4 +46,4 @@ Two short DPO runs check the training pipeline end to end before any real experi
 | Cost | $0.08 |
 
 - **Memory is tight at batch size 2.** At step 4, one 1.64 GB allocation failed and PyTorch retried it after freeing cached memory, so the run continued. That allocation is the float32 logits for 4 sequences (2 chosen, 2 rejected) × 1024 tokens × 100,352 vocabulary entries. Real runs need a larger GPU or gradient accumulation.
-- **Time estimate for real runs.** MultiPref has 8,625 pairs with a majority ([MultiPref annotations](experiments/README.md#multipref-annotations)), so the 80% training split holds about 6,900 of them. At this speed, one epoch over them takes about 78 minutes on this GPU, on top of about 5 minutes to set up a new pod.
+- **Time estimate for real runs.** Training will use the 6,905 pairs of the train split that have a majority ([Data preparation](docs/data.md#notes-for-training-and-evaluation)). At this speed, one epoch over them takes about 78 minutes on this GPU, on top of about 5 minutes to set up a new pod.
