@@ -3,9 +3,10 @@
 The script runs the whole pipeline of `src/soft_label_dpo/data.py`:
 
 1. Load the "default" configuration of MultiPref at the pinned revision.
-2. Add the vote columns (p, d, bucket, ...) and make the majority answer of each pair the chosen answer.
-3. Split 80/10/10 by prompt, stratified by the combination of buckets of each prompt.
-4. Convert to TRL's conversational format and keep only `SAVED_COLUMNS`.
+2. Add the vote columns (p, d, bucket, ...).
+3. Make the majority answer of each pair the chosen answer.
+4. Split 80/10/10 by prompt, stratified by the combination of buckets of each prompt.
+5. Convert to the conversational format of TRL and keep only `SAVED_COLUMNS`.
 
 It then pushes the "train", "validation" and "test" splits to `SOFT_LABEL_DATASET_ID` and uploads a
 `build_info.json` next to them. The file records the MultiPref revision, the split seed and the git
