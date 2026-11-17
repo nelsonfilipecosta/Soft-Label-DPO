@@ -4,7 +4,7 @@ Each pair in the "default" configuration of MultiPref has four votes on which of
 is better. Two of the votes come from crowdworkers and two from experts. The `overall_pref` of each vote
 is coded as A = 1, Tie (T) = 0.5 or B = 0, with "slightly better" and "clearly better" counting the same.
 
-From these numbers, each pair gets two values:
+From these numbers, each pair gets three values:
 
 - p, the share of votes for A, with a tie counting as half a vote for each answer. It is the mean of the
   numbers, so AAAB (three votes for A, one for B) gives p = 0.75. p = 0.5 means there is no majority.
@@ -13,6 +13,14 @@ From these numbers, each pair gets two values:
   p(AABB) = (1+1+0+0)/4 = 0.5
   p(TTTT) = (0.5+0.5+0.5+0.5)/4 = 0.5
   p(BBBT) = (0+0+0+0.5)/4 = 0.125
+
+- q, the share of votes for the chosen answer. It is the target of the soft condition and it runs from 0.5,
+when there is no majority, to 1, when all votes are for the same answer.
+
+  q(AAAB) = max(0.75, 1-0.75) = 0.75
+  q(AABB) = max(0.5, 1-0.5) = 0.5
+  q(TTTT) = max(0.5, 1-0.5) = 0.5
+  q(BBBT) = max(0.125, 1-0.125) = 0.875
 
 - d, how much the annotators disagree. It is the population variance of the numbers, so it runs from 0,
   when all votes are the same, to 0.25, when half are for A and half are for B. TTTT and AABB both give
@@ -23,9 +31,13 @@ From these numbers, each pair gets two values:
   d(TTTT) = ((0.5-0.5)^2 + (0.5-0.5)^2 + (0.5-0.5)^2 + (0.5-0.5)^2)/4 = 0
   d(BBBT) = ((0-0.125)^2 + (0-0.125)^2 + (0-0.125)^2 + (0.5-0.125)^2)/4 = 0.046875
 
-Each pair also gets an agreement bucket (strong, moderate or split) from p and a vote pattern, which is
+Each pair also gets an agreement bucket (strong, moderate or split) from q and a vote pattern, which is
 its votes as sorted letters, such as AABT. The functions that take a list of votes accept any number of
 them, so they also work on the crowdworker or expert votes alone.
+
+`scripts/build_dataset.py` runs the functions of this module in sequence.
+
+`docs/data.md` explains the reasons behind each step.
 """
 
 
