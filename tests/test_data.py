@@ -20,8 +20,8 @@ from soft_label_dpo.data import (
     a_is_chosen,
     agreement_bucket,
     bucket_combination,
+    chosen_and_rejected_columns,
     chosen_share,
-    orient_pair,
     split_by_prompt,
     split_prompts,
     to_conversational,
@@ -315,7 +315,7 @@ def test_a_is_chosen_rejects_a_p_outside_0_and_1(p):
     ],
     ids=["a_majority", "b_majority", "split"],
 )
-def test_orient_pair_puts_the_majority_answer_in_chosen(p, expected):
+def test_chosen_and_rejected_columns_put_the_majority_answer_in_chosen(p, expected):
     """The majority answer and its model go in the chosen columns and A when there is no majority."""
     pair = {
         "p": p,
@@ -324,10 +324,10 @@ def test_orient_pair_puts_the_majority_answer_in_chosen(p, expected):
         "model_a": "model-a",
         "model_b": "model-b",
     }
-    assert orient_pair(pair) == expected
+    assert chosen_and_rejected_columns(pair) == expected
 
 
-def test_orient_pair_works_when_both_answers_come_from_the_same_model():
+def test_chosen_and_rejected_columns_work_when_both_answers_come_from_the_same_model():
     """The texts still go to the right side when both answers have the same model name."""
     pair = {
         "p": 0.25,
@@ -336,9 +336,9 @@ def test_orient_pair_works_when_both_answers_come_from_the_same_model():
         "model_a": "gpt-4",
         "model_b": "gpt-4",
     }
-    oriented = orient_pair(pair)
-    assert oriented["chosen_completion"] == "Answer B"
-    assert oriented["rejected_completion"] == "Answer A"
+    columns = chosen_and_rejected_columns(pair)
+    assert columns["chosen_completion"] == "Answer B"
+    assert columns["rejected_completion"] == "Answer A"
 
 
 @pytest.mark.parametrize(
@@ -510,7 +510,7 @@ def test_saved_columns_are_exactly_the_columns_left_after_selecting_them():
             {"evaluator": "expert-2", "overall_pref": "Tie", "overall_confidence": "fairly-confident"},
         ],
     }
-    pairs = Dataset.from_list([raw_pair]).map(vote_columns).map(orient_pair).map(to_conversational)
+    pairs = Dataset.from_list([raw_pair]).map(vote_columns).map(chosen_and_rejected_columns).map(to_conversational)
     saved = pairs.select_columns(list(SAVED_COLUMNS))
     assert saved.column_names == list(SAVED_COLUMNS)
     assert saved[0]["chosen"] == [{"role": "assistant", "content": "Axial tilt."}]

@@ -3,7 +3,7 @@
 The script runs the whole pipeline of `src/soft_label_dpo/data.py`:
 
 1. Load the "default" configuration of MultiPref at the pinned revision.
-2. Add the vote columns (p, d, bucket, ...) and orient each pair (chosen = the majority answer).
+2. Add the vote columns (p, d, bucket, ...) and make the majority answer of each pair the chosen answer.
 3. Split 80/10/10 by prompt, stratified by the combination of buckets of each prompt.
 4. Convert to TRL's conversational format and keep only `SAVED_COLUMNS`.
 
@@ -34,8 +34,8 @@ from soft_label_dpo.data import (
     SAVED_COLUMNS,
     SOFT_LABEL_DATASET_ID,
     SPLIT_SEED,
+    chosen_and_rejected_columns,
     load_multipref,
-    orient_pair,
     split_by_prompt,
     to_conversational,
     vote_columns,
@@ -52,7 +52,7 @@ def git_commit() -> str:
 
 def build_splits() -> DatasetDict:
     """Return the three splits ready to save."""
-    pairs = load_multipref("default").map(vote_columns).map(orient_pair)
+    pairs = load_multipref("default").map(vote_columns).map(chosen_and_rejected_columns)
     splits = split_by_prompt(pairs, SPLIT_SEED)
     return splits.map(to_conversational).select_columns(list(SAVED_COLUMNS))
 

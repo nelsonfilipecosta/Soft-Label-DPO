@@ -209,7 +209,7 @@ def a_is_chosen(p: float) -> bool:
     return p >= 0.5
 
 
-def orient_pair(pair: dict) -> dict:
+def chosen_and_rejected_columns(pair: dict) -> dict:
     """Return the chosen and rejected columns of one pair, so they can be added to the dataset with `Dataset.map`.
 
     The pair needs `p` from `vote_columns`. The answers and their models are swapped when B is chosen and
@@ -302,9 +302,10 @@ def split_by_prompt(pairs: Dataset, seed: int = SPLIT_SEED) -> DatasetDict:
 def to_conversational(pair: dict) -> dict:
     """Return the prompt, chosen and rejected columns of one preference pair in TRL's conversational format.
 
-    The pair needs `text` from MultiPref and the columns from `orient_pair`. Each column is a list with one
-    message, so TRL applies the model's chat template itself and knows where the prompt ends. The texts are
-    copied exactly, without stripping or cleaning, so they still match the raw MultiPref answers.
+    The pair needs `text` from MultiPref and the columns from `chosen_and_rejected_columns`. Each column is
+    a list with one message, so TRL applies the model's chat template itself and knows where the prompt
+    ends. The texts are copied exactly, without stripping or cleaning, so they still match the raw
+    MultiPref answers.
     """
     return {
         "prompt": [{"role": "user", "content": pair["text"]}],
