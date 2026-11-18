@@ -14,7 +14,7 @@ from trl import TrlParser, ScriptArguments, DPOConfig, ModelConfig, DPOTrainer, 
 
 @dataclass
 class TrainScriptArguments(ScriptArguments):
-    """TRL's `ScriptArguments` class with an additional `max_train_samples` argument.
+    """The `ScriptArguments` class of TRL with an additional `max_train_samples` argument.
 
     The `max_train_samples` argument limits the number of selected training samples, so that short runs
     such as the smoke test don't tokenize the whole dataset. Setting it to `None` uses every row.

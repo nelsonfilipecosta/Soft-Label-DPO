@@ -20,7 +20,7 @@ from collections import Counter
 
 from datasets import concatenate_datasets
 
-from soft_label_dpo.data import load_soft_label_dataset
+from soft_label_dpo.data import SPLIT_NAMES, load_soft_label_dataset
 
 
 def wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -44,7 +44,7 @@ def print_b_share(label: str, b_wins: int, n: int) -> None:
 
 def main():
     splits = load_soft_label_dataset()
-    pairs = concatenate_datasets([splits[name] for name in ("train", "validation", "test")])
+    pairs = concatenate_datasets([splits[name] for name in SPLIT_NAMES])
 
     # Determine which model is in each position
     model_a = [chosen if is_a else rejected

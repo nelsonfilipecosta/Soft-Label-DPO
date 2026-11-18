@@ -1,6 +1,6 @@
 """Measure the token lengths of the soft-label dataset with the chat template of OLMo 2.
 
-DPO training truncates every sequence (prompt + answer) to `max_length` tokens, which is 1024 in the smoke
+DPO training truncates every sequence (prompt + answer) to `max_length` tokens, which is 1,024 in the smoke
 test. TRL 1.14 keeps the start of a sequence, so truncation cuts the end of a long answer and it drops a
 pair whose prompt alone reaches `max_length`. This script tokenizes all 10,461 pairs of the soft-label
 dataset at its pinned revision the way TRL does, with the chat template applied to the "prompt" alone, to
@@ -22,7 +22,7 @@ from collections import Counter
 from datasets import concatenate_datasets
 from transformers import AutoTokenizer
 
-from soft_label_dpo.data import AGREEMENT_BUCKETS, load_soft_label_dataset
+from soft_label_dpo.data import AGREEMENT_BUCKETS, SPLIT_NAMES, load_soft_label_dataset
 
 
 MODEL_ID = "allenai/OLMo-2-0425-1B-SFT"
@@ -53,7 +53,7 @@ def token_lengths(pair: dict, tokenizer) -> dict:
 def main():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=MODEL_REVISION)
     splits = load_soft_label_dataset()
-    pairs = concatenate_datasets([splits[name] for name in ("train", "validation", "test")])
+    pairs = concatenate_datasets([splits[name] for name in SPLIT_NAMES])
     pairs = pairs.map(token_lengths, fn_kwargs={"tokenizer": tokenizer})
     longer = pairs["longer_tokens"]
 

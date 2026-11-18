@@ -200,7 +200,7 @@ def test_agreement_bucket_covers_every_p_from_four_votes(p, bucket):
 
 @pytest.mark.parametrize("pattern, bucket", [(pattern, bucket) for pattern, _, _, bucket in HAND_COMPUTED])
 def test_agreement_bucket_matches_the_hand_computed_bucket(pattern, bucket):
-    """The bucket of each pattern's p matches the bucket worked out by hand."""
+    """The bucket of the p of each pattern matches the bucket worked out by hand."""
     assert agreement_bucket(vote_share(labels_from_pattern(pattern))) == bucket
 
 

@@ -96,8 +96,8 @@ def main():
     )
 
     print()
-    print(f"Pushed to https://huggingface.co/datasets/{SOFT_LABEL_DATASET_ID}.")
-    print(f"Revision to pin as `SOFT_LABEL_DATASET_REVISION` in data.py and in the configs: {upload.oid}")
+    print(f"Pushed to https://huggingface.co/datasets/{SOFT_LABEL_DATASET_ID}")
+    print(f"Revision to pin as `SOFT_LABEL_DATASET_REVISION` in `data.py`: {upload.oid}")
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ the pairs where `tie_is_common` is true and our split pairs. Answers are matched
 name, because 27.9% of the pairs compare a model with itself. This script checks four things on all 10,461
 pairs of the soft-label dataset at its pinned revision:
 
-1. Every pair has a binarized pair with the same `comparison_id` and prompt.
+1. Whether every pair has a binarized pair with the same `comparison_id` and prompt.
 2. How often our chosen answer is their chosen answer (agree), their rejected answer (swapped) or neither.
 3. The vote patterns and weighted scores of the agreeing and swapped pairs.
 4. A few examples of the pairs that match neither answer.
@@ -21,7 +21,7 @@ from collections import Counter
 
 from datasets import concatenate_datasets
 
-from soft_label_dpo.data import load_multipref, load_soft_label_dataset
+from soft_label_dpo.data import SPLIT_NAMES, load_multipref, load_soft_label_dataset
 
 
 # Weight of each `overall_pref` label, positive for A and negative for B
@@ -60,7 +60,7 @@ def outcome(our_chosen: str, their_chosen: str, their_rejected: str) -> str:
 
 def main():
     splits = load_soft_label_dataset()
-    pairs = concatenate_datasets([splits[name] for name in ("train", "validation", "test")])
+    pairs = concatenate_datasets([splits[name] for name in SPLIT_NAMES])
     binarized = load_multipref("human_overall_binarized")
     # `comparison_id` is unique in the binarized configuration, so each ID maps to one row
     row_of_comparison = {comparison_id: i for i, comparison_id in enumerate(binarized["comparison_id"])}

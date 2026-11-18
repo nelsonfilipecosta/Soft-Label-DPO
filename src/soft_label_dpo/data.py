@@ -15,7 +15,7 @@ From these numbers, each pair gets three values:
   p(BBBT) = (0+0+0+0.5)/4 = 0.125
 
 - q, the share of votes for the chosen answer. It is the target of the soft condition and it runs from 0.5,
-when there is no majority, to 1, when all votes are for the same answer.
+  when there is no majority, to 1, when all votes are for the same answer.
 
   q(AAAB) = max(0.75, 1-0.75) = 0.75
   q(AABB) = max(0.5, 1-0.5) = 0.5
@@ -37,7 +37,7 @@ them, so they also work on the crowdworker or expert votes alone.
 
 `scripts/build_dataset.py` runs the functions of this module in sequence.
 
-`docs/data.md` explains the reasons behind each step.
+`docs/data.md` explains how the dataset is built and why.
 """
 
 
@@ -54,6 +54,9 @@ MULTIPREF_REVISION = "12910233a0238a997ebe425656e9dfed7b0ff031"
 
 # Seed of the "train", "validation" and "test" split, so the same split can always be rebuilt
 SPLIT_SEED = 42
+
+# Names of the three splits of the soft-label dataset
+SPLIT_NAMES = ("train", "validation", "test")
 
 # The dataset built by `scripts/build_dataset.py`
 SOFT_LABEL_DATASET_ID = "nelsonfilipecosta/multipref-soft-labels"
@@ -85,7 +88,7 @@ SAVED_COLUMNS = (
     # IDs to trace each pair back to MultiPref
     "comparison_id",
     "prompt_id",
-    # TRL's conversational format
+    # Conversational format of TRL
     "prompt",
     "chosen",
     "rejected",
@@ -214,7 +217,7 @@ def a_is_chosen(p: float) -> bool:
     """Return `True` if A is the chosen answer (p ≥ 0.5) and `False` otherwise.
 
     Split pairs (p = 0.5) have no majority, so A is chosen by convention. Swapping the two answers would
-    only flip the sign of the model's margin, which leaves the distance of its preference from 50/50 unchanged.
+    only flip the sign of the margin of the model, which leaves the distance of its preference from 50/50 unchanged.
     """
     if not 0 <= p <= 1:
         raise ValueError(f"Invalid p = {p}. Expected a value between 0 and 1.")
@@ -241,7 +244,7 @@ def chosen_and_rejected_columns(pair: dict) -> dict:
 
 
 def bucket_combination(buckets: list[str]) -> str:
-    """Return a prompt's combination of buckets, such as "moderate+strong", to stratify the split by.
+    """Return the combination of buckets of a prompt, such as "moderate+strong", to stratify the split by.
 
     `buckets` holds the bucket of each pair of the prompt. They are sorted and repeats are dropped, so the
     order of the pairs doesn't matter and a prompt whose two pairs are both split gives "split".
@@ -281,15 +284,15 @@ def split_prompts(prompt_ids: list[str], seed: int) -> dict[str, str]:
 
 
 def split_by_prompt(pairs: Dataset, seed: int = SPLIT_SEED) -> DatasetDict:
-    """Split the pairs 80/10/10 by prompt, stratified by each prompt's combination of buckets.
+    """Split the pairs 80/10/10 by prompt, stratified by the combination of buckets of each prompt.
 
     The pairs need `prompt_id` and `bucket`. All pairs of a prompt go to the same split. Each prompt
-    is labelled with the combination of its pairs' buckets, such as "moderate+split", which puts the
+    is labelled with the combination of the buckets of its pairs, such as "moderate+split", which puts the
     prompts in six groups. Each group is shuffled and cut 80/10/10 separately with `split_prompts`.
     So every split gets the same mix of groups and with it nearly the same share of strong, moderate
     and split pairs. Within each split, the pairs keep their original order.
     """
-    # Collect the buckets of each prompt's pairs
+    # Collect the buckets of the pairs of each prompt
     buckets_of_prompt = collections.defaultdict(list)
     for prompt_id, bucket in zip(pairs["prompt_id"], pairs["bucket"]):
         buckets_of_prompt[prompt_id].append(bucket)
@@ -307,15 +310,15 @@ def split_by_prompt(pairs: Dataset, seed: int = SPLIT_SEED) -> DatasetDict:
 
     return DatasetDict({
         split: pairs.select([i for i, pair_split in enumerate(split_of_pair) if pair_split == split])
-        for split in ("train", "validation", "test")
+        for split in SPLIT_NAMES
     })
 
 
 def to_conversational(pair: dict) -> dict:
-    """Return the prompt, chosen and rejected columns of one preference pair in TRL's conversational format.
+    """Return the prompt, chosen and rejected columns of one preference pair in the conversational format of TRL.
 
     The pair needs `text` from MultiPref and the columns from `chosen_and_rejected_columns`. Each column is
-    a list with one message, so TRL applies the model's chat template itself and knows where the prompt
+    a list with one message, so TRL applies the chat template of the model itself and knows where the prompt
     ends. The texts are copied exactly, without stripping or cleaning, so they still match the raw
     MultiPref answers.
     """

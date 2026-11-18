@@ -8,8 +8,6 @@ this script compares the two variants on five different prompts:
 - With the chat template as shipped (which starts with <|endoftext|>)
 - With the leading <|endoftext|> removed, as the model card describes
 
-If the outputs are of the same quality, keep the chat template as it is and note the discrepancy.
-
 Usage:
     uv run python experiments/compare_bos_token.py
 """
@@ -22,7 +20,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 MODEL_ID = "allenai/OLMo-2-0425-1B-SFT"
-MODEL_REVISION = "0d85a3d037876ce6ac7d4311d994400fc66ac27f"  # same as `revision` in configs/smoke_test.yaml
+MODEL_REVISION = "0d85a3d037876ce6ac7d4311d994400fc66ac27f"  # same as `revision` in `configs/smoke_test.yaml`
 OUTPUT_PATH = Path("experiments/compare_bos_token_output.md")
 
 PROMPTS = {
@@ -54,7 +52,7 @@ def build_inputs(tokenizer, messages: list[dict], keep_bos: bool):
 
 
 def generate(model, tokenizer, inputs) -> str:
-    """Generate a response from the model and return the decoded answer only."""
+    """Generate an answer from the model and return the decoded answer only."""
     inputs = inputs.to(model.device)
     with torch.no_grad():
         # Generate with greedy decoding (do_sample=False) to keep the outputs deterministic

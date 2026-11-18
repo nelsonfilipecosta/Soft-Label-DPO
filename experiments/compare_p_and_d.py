@@ -18,15 +18,12 @@ from collections import Counter, defaultdict
 
 from datasets import concatenate_datasets
 
-from soft_label_dpo.data import load_soft_label_dataset
-
-
-SPLITS = ("train", "validation", "test")
+from soft_label_dpo.data import SPLIT_NAMES, load_soft_label_dataset
 
 
 def main():
     splits = load_soft_label_dataset()
-    pairs = concatenate_datasets([splits[name] for name in SPLITS])
+    pairs = concatenate_datasets([splits[name] for name in SPLIT_NAMES])
 
     # Count the pairs of each (pattern, p, d, bucket)
     rows = Counter(zip(pairs["vote_pattern"], pairs["p"], pairs["d"], pairs["bucket"]))
@@ -40,17 +37,17 @@ def main():
         print(f"{pattern:<8} {p:>6.3f} {d:>9.6f}  {bucket:<9} {count:>6,} {count / len(pairs):>6.1%}")
 
     # Check 2: the values of d for each p
-    d_counts_by_p = defaultdict(Counter)
+    d_counts_of_p = defaultdict(Counter)
     for (_, p, d, _), count in rows.items():
-        d_counts_by_p[p][d] += count
+        d_counts_of_p[p][d] += count
     print()
     print("Check 2")
     print("Values of d for each p:")
-    for p in sorted(d_counts_by_p, reverse=True):
-        d_counts = d_counts_by_p[p]
+    for p in sorted(d_counts_of_p, reverse=True):
+        d_counts = d_counts_of_p[p]
         values = ", ".join(f"{d:.6f}" for d in sorted(d_counts))
         print(f"-> p = {p:.3f}: {len(d_counts)} value(s) of d ({values}) over {sum(d_counts.values()):,} pairs")
-    several = sum(sum(d_counts.values()) for d_counts in d_counts_by_p.values() if len(d_counts) > 1)
+    several = sum(sum(d_counts.values()) for d_counts in d_counts_of_p.values() if len(d_counts) > 1)
     print(f"-> {several:,} of the {len(pairs):,} pairs ({several / len(pairs):.1%}) have a p that "
           "comes with more than one value of d")
 
@@ -58,7 +55,7 @@ def main():
     print()
     print("Check 3")
     print("Vote patterns of the split pairs (p = 0.5) in each split:")
-    for name in SPLITS:
+    for name in SPLIT_NAMES:
         split = splits[name]
         patterns = Counter(
             pattern for pattern, bucket in zip(split["vote_pattern"], split["bucket"]) if bucket == "split"

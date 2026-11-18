@@ -1,15 +1,15 @@
 """Infer the rule that Ai2 used to build the "human_overall_binarized" configuration of MultiPref.
 
-The swapped pairs of `check_binarized.py` pointed to a rule that Ai2 takes the most common of the five
-`overall_pref` labels and maps only "A-is-clearly-better" to A. When several labels are equally common,
-it picks one at random. The rule was found by looking at the data, so this script tests it on all pairs.
-It uses only MultiPref and not our dataset, so a bug in our pipeline can't change the result. This script
-checks four things on all 10,461 pairs of MultiPref at its pinned revision:
+The swapped pairs of the binarized labels experiment pointed to a rule that Ai2 takes the most common
+of the five `overall_pref` vote labels and maps only "A-is-clearly-better" to A. When several vote labels
+are equally common, it picks one at random. The rule was found by looking at the data, so this script tests
+it on all pairs. It uses only MultiPref and not our dataset, so a bug in our pipeline can't change the
+result. This script checks four things on all 10,461 pairs of MultiPref at its pinned revision:
 
-1. Every pair has a binarized pair and the chosen answer of Ai2 matches one of its two answers.
-2. The side that Ai2 chose for each most common label.
-3. Whether the rule predicts every pair with a single most common label that isn't "Tie".
-4. Whether `tie_is_common` is true only when "Tie" is among the most common labels.
+1. Whether every pair has a binarized pair and the chosen answer of Ai2 matches one of its two answers.
+2. The side that Ai2 chose for each most common vote label.
+3. Whether the rule predicts every pair with a single most common vote label that isn't "Tie".
+4. Whether `tie_is_common` is true only when "Tie" is among the most common vote labels.
 
 Usage:
     uv run python experiments/infer_binarized_rule.py
@@ -21,7 +21,7 @@ from collections import Counter
 from soft_label_dpo.data import VOTE_VALUES, load_multipref, vote_columns
 
 
-# The side that Ai2 chooses for each most common label under the rule
+# The side that Ai2 chooses for each most common vote label under the rule
 RULE_SIDES = {
     "A-is-clearly-better": "A",
     "A-is-slightly-better": "B",
@@ -29,7 +29,7 @@ RULE_SIDES = {
     "B-is-clearly-better": "B",
 }
 
-SEVERAL_LABELS = "several labels tie"
+SEVERAL_LABELS = "several vote labels tie"
 N_EXAMPLES = 3
 
 
@@ -77,21 +77,21 @@ def main():
     print(f"-> the side that Ai2 chose is known for {known:,} of the {len(pairs):,} pairs")
     print(f"-> Ai2 chose B in {side_counts['B']:,} of these pairs ({side_counts['B'] / known:.1%})")
 
-    # Check 2: the side that Ai2 chose for each most common label
+    # Check 2: the side that Ai2 chose for each most common vote label
     modes = [most_common_labels(crowd + expert) for crowd, expert in zip(pairs["crowd_votes"], pairs["expert_votes"])]
-    sides_by_mode = {}
+    sides_of_mode = {}
     for mode, side in zip(modes, sides):
         key = mode[0] if len(mode) == 1 else SEVERAL_LABELS
-        sides_by_mode.setdefault(key, Counter())[side] += 1
+        sides_of_mode.setdefault(key, Counter())[side] += 1
     print()
     print("Check 2")
-    print("Side that Ai2 chose by most common label (all pairs):")
-    print(f"{'most common label':<22} {'A':>6} {'B':>6} {'share B':>8}")
+    print("Side that Ai2 chose by most common vote label (all pairs):")
+    print(f"{'most common vote label':<23} {'A':>6} {'B':>6} {'share B':>8}")
     for key in list(VOTE_VALUES) + [SEVERAL_LABELS]:
-        counter = sides_by_mode.get(key, Counter())
+        counter = sides_of_mode.get(key, Counter())
         total = counter["A"] + counter["B"]
         share = f"{counter['B'] / total:.1%}" if total else "-"
-        print(f"{key:<22} {counter['A']:>6,} {counter['B']:>6,} {share:>8}")
+        print(f"{key:<23} {counter['A']:>6,} {counter['B']:>6,} {share:>8}")
 
     # Check 3: the rule on the pairs it can predict
     predictable = [
@@ -102,21 +102,21 @@ def main():
     print()
     print("Check 3")
     print(f"-> the rule predicts the side that Ai2 chose in {len(predictable) - len(mismatches):,} of the "
-          f"{len(predictable):,} pairs with a single most common label that isn't \"Tie\"")
+          f"{len(predictable):,} pairs with a single most common vote label that isn't \"Tie\"")
     print(f"-> the other {len(pairs) - len(predictable):,} pairs need a random tie-break or have no known side")
     for i in mismatches[:N_EXAMPLES]:
         print(f"   {pairs['comparison_id'][i]}: crowd {pairs['crowd_votes'][i]}, expert {pairs['expert_votes'][i]}, "
               f"Ai2 chose {sides[i]}")
 
-    # Check 4: `tie_is_common` should only be true when "Tie" is among the most common labels
+    # Check 4: `tie_is_common` should only be true when "Tie" is among the most common vote labels
     tie_counts = Counter(
         (tie_is_common, "Tie" in mode) for tie_is_common, mode in zip(binarized["tie_is_common"], modes)
     )
     print()
     print("Check 4")
-    print(f"-> `tie_is_common` is true in {tie_counts[(True, True)]:,} pairs with \"Tie\" among the most common labels")
-    print(f"-> `tie_is_common` is true in {tie_counts[(True, False)]:,} pairs without \"Tie\" among the most common labels")
-    print(f"-> {tie_counts[(False, True)]:,} pairs have \"Tie\" among the most common labels but aren't flagged")
+    print(f"-> `tie_is_common` is true in {tie_counts[(True, True)]:,} pairs with \"Tie\" among the most common vote labels")
+    print(f"-> `tie_is_common` is true in {tie_counts[(True, False)]:,} pairs without \"Tie\" among the most common vote labels")
+    print(f"-> {tie_counts[(False, True)]:,} pairs have \"Tie\" among the most common vote labels but aren't flagged")
 
 
 if __name__ == "__main__":

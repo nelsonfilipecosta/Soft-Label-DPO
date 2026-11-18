@@ -1,6 +1,6 @@
 # Smoke test
 #
-# 10 DPO steps on TRL's quick-start dataset to check the training pipeline works end to end.
+# 10 DPO steps on the quick-start dataset of TRL to check the training pipeline works end to end.
 
 # Model
 model_name_or_path: allenai/OLMo-2-0425-1B-SFT

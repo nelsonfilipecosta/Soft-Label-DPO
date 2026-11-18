@@ -14,7 +14,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKSPACE="${WORKSPACE:-/workspace}"  # volume disk: survives a pod stop, unlike the container disk
 MIN_UV_VERSION="0.11.24"
 MODEL_ID="allenai/OLMo-2-0425-1B-SFT"
-MODEL_REVISION="0d85a3d037876ce6ac7d4311d994400fc66ac27f"  # keep in sync with `revision` in configs/*.yaml
+MODEL_REVISION="0d85a3d037876ce6ac7d4311d994400fc66ac27f"  # keep in sync with `revision` in `configs/*.yaml`
 
 step() { printf '\n==> %s\n' "$*"; }
 fail() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
@@ -67,14 +67,14 @@ import trl
 print(f"torch {torch.__version__} (CUDA {torch.version.cuda}), transformers {transformers.__version__}, trl {trl.__version__}")
 
 if not torch.cuda.is_available():
-    sys.exit("CUDA is not available. The pod's driver is probably too old for this torch build: "
-             "redeploy with a newer CUDA version filter.")
+    sys.exit("CUDA is not available. The driver of the pod is probably too old for this torch build. "
+             "Redeploy with a newer CUDA version filter.")
 props = torch.cuda.get_device_properties(0)
-print(f"GPU: {props.name}, {props.total_memory / 1e9:.0f} GB")
+print(f"GPU: {props.name}, {props.total_memory / 1024**3:.1f} GiB")
 if not torch.cuda.is_bf16_supported():
     sys.exit("This GPU has no bf16 support. Rent an Ampere-or-newer GPU.")
 
-# A real bf16 matmul catches driver problems that is_available() misses.
+# A real bf16 matmul catches driver problems that is_available() misses
 x = torch.randn(1024, 1024, device="cuda", dtype=torch.bfloat16)
 torch.cuda.synchronize()
 assert torch.isfinite(x @ x).all()

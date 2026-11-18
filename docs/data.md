@@ -34,11 +34,11 @@ The votes come from the "default" configuration of [MultiPref](https://huggingfa
 - Prompts come **from five sources**: Anthropic HH helpful, Anthropic HH harmless, Chatbot Arena, ShareGPT and WildChat.
 - Answers come **from six models**: Tülu 2 7B, Tülu 2 70B, GPT-3.5 Turbo, GPT-4 Turbo, Llama 2 70B Chat and Llama 3 70B Instruct. In 2,919 pairs (27.9%), both answers come from the same model ([Position of the answers](../experiments/README.md#position-of-the-answers)).
 - Each preference pair has exactly **four votes** ([MultiPref annotations](../experiments/README.md#multipref-annotations)). Two come from crowdworkers with a Bachelor's degree and two come from experts with at least a graduate degree in the field of the prompt.
-- The votes were selected from a **five-point scale**, called `overall_pref`. The vote options were "A-is-clearly-better", "A-is-slightly-better", "Tie", "B-is-slightly-better" and "B-is-clearly-better".
+- The votes were selected from a **five-point scale**, called `overall_pref`. The vote labels were "A-is-clearly-better", "A-is-slightly-better", "Tie", "B-is-slightly-better" and "B-is-clearly-better".
 
 ## From votes to labels
 
-The labels are computed from the votes as numbers. Votes for answer A count as 1, ties as 0.5 and votes for answer B as 0. "Slightly" and "clearly" count the same, so the labels measure how many annotators preferred an answer and not how strongly. The four numbers of a pair give five values:
+The labels are computed from the votes as numbers. Votes for answer A count as 1, ties as 0.5 and votes for answer B as 0. "Slightly" and "clearly" count the same, so p, q and d measure how many annotators preferred an answer and not how strongly. The four numbers of a pair give five values:
 
 | Value | What it is | Example: B, A, Tie, B |
 | --- | --- | --- |
@@ -106,7 +106,7 @@ The groups with a single bucket also hold the 185 prompts that have only one pai
 
 Then, each group is shuffled with seed 42 and cut on its own. The first 10% of its prompts (rounded down) go to validation, the next 10% to test and the rest to train. This gives three splits of the following sizes:
 
-| Split | Prompts | Pairs | Strong | Moderate | Split |
+| Split | Prompts | Pairs | Strong | Moderate | Split pairs |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | train | 4,263 | 8,377 | 2,631 (31.4%) | 4,274 (51.0%) | 1,472 (17.6%) |
 | validation | 530 | 1,042 | 322 (30.9%) | 537 (51.5%) | 183 (17.6%) |
@@ -141,7 +141,7 @@ The dataset keeps 17 columns:
 | `bucket` | The level of agreement, which can be strong, moderate or split |
 | `vote_pattern` | The four votes as sorted letters, such as ABBT |
 | `chosen_is_a` | Whether the chosen answer was A in MultiPref |
-| `crowd_votes`, `expert_votes` | The two `overall_pref` labels of each group, with "slightly" and "clearly" kept |
+| `crowd_votes`, `expert_votes` | The two `overall_pref` vote labels of each group, with "slightly" and "clearly" kept |
 | `chosen_model`, `rejected_model` | The models that wrote the two answers |
 | `category`, `source` | The task category of the prompt and the dataset it comes from |
 
@@ -189,7 +189,7 @@ MultiPref also has a configuration called "human_overall_binarized". In this con
 - 99.4% of the compared pairs with a B majority have the same chosen answer as in "human_overall_binarized".
 - 64.4% of the compared pairs with an A majority **do not have** the same chosen answer as in "human_overall_binarized".
 
-The [Rule of the binarized labels](../experiments/README.md#rule-of-the-binarized-labels) experiment suggests an explanation for this discrepancy. It suggests Ai2 takes the most common of the five labels and gives the win to A only for "A-is-clearly-better". So a pair where most annotators chose "A-is-slightly-better" goes to B. This rule matches the chosen answer of Ai2 on all 5,774 pairs where it applies. It was inferred from the output and not read from the code that Ai2 used. Our labels are correct and the "human_overall_binarized" configuration is not used as ground truth or as a baseline.
+The [Rule of the binarized labels](../experiments/README.md#rule-of-the-binarized-labels) experiment suggests an explanation for this discrepancy. It suggests Ai2 takes the most common of the five vote labels and gives the win to A only for "A-is-clearly-better". So a pair where most annotators chose "A-is-slightly-better" goes to B. This rule matches the chosen answer of Ai2 on all 5,774 pairs where it applies. It was inferred from the output and not read from the code that Ai2 used. Our labels are correct and the "human_overall_binarized" configuration is not used as ground truth or as a baseline.
 
 ## Notes for training and evaluation
 
