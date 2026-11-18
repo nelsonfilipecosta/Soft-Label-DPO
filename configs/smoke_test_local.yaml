@@ -25,18 +25,18 @@ lr_scheduler_type: constant
 max_length: 1024
 gradient_checkpointing: true
 bf16: false
-use_cpu: true # the GPU on Apple M1 chip computes wrong losses and gradients once batches are long
+use_cpu: true  # the GPU on the Apple M1 chip computes wrong losses and gradients once batches are long
 seed: 42
 
 # Logging and saving
 output_dir: outputs/smoke_test_local
 report_to: none  # keep local test runs out of the W&B project
-run_name: smoke-test-local # unused while `report_to` is set to `none`
+run_name: smoke-test-local  # unused while `report_to` is set to `none`
 logging_steps: 1
 logging_first_step: true
 save_strategy: "no"
 
 # Environment
 env:
-  WANDB_PROJECT: soft-label-dpo # unused while `report_to` is set to `none`
-  HF_DEACTIVATE_ASYNC_LOAD: "1" # parallel weight loading crashes on macOS once `datasets` is imported
+  WANDB_PROJECT: soft-label-dpo  # unused while `report_to` is set to `none`
+  HF_DEACTIVATE_ASYNC_LOAD: "1"  # parallel weight loading crashes on macOS once `datasets` is imported

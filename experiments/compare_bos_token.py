@@ -2,13 +2,14 @@
 
 The model card on Hugging Face (https://huggingface.co/allenai/OLMo-2-0425-1B-SFT) says the chat template
 "does NOT have the BOS token before the rest". However, the chat template shipped with the tokenizer does
-start with the BOS token, so every prompt it builds begins with `<|endoftext|>`. To settle this discrepancy,
+start with the BOS token, so every prompt it builds begins with <|endoftext|>. To settle this discrepancy,
 this script compares the two variants on five different prompts:
 
 - With the chat template as shipped (which starts with <|endoftext|>)
 - With the leading <|endoftext|> removed, as the model card describes
 
-If the outputs are of the same quality, keep the chat template as it is and note the discrepancy.
+Usage:
+    uv run python experiments/compare_bos_token.py
 """
 
 
@@ -19,6 +20,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 MODEL_ID = "allenai/OLMo-2-0425-1B-SFT"
+MODEL_REVISION = "0d85a3d037876ce6ac7d4311d994400fc66ac27f"  # same as `revision` in `configs/smoke_test.yaml`
 OUTPUT_PATH = Path("experiments/compare_bos_token_output.md")
 
 PROMPTS = {
@@ -39,23 +41,23 @@ def pick_device() -> str:
 
 
 def build_inputs(tokenizer, messages: list[dict], keep_bos: bool):
-    """Tokenize a conversation (optionally dropping the template's leading BOS token)."""
+    """Tokenize a conversation, optionally dropping the leading BOS token of the template."""
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    # remove the leading BOS token
+    # Remove the leading BOS token
     if not keep_bos:
         assert text.startswith(tokenizer.bos_token), "Expected the template to start with the BOS token."
         text = text.removeprefix(tokenizer.bos_token)
-    # return the tokenized input as a tensor
+    # Return the tokenized input as a tensor
     return tokenizer(text, return_tensors="pt", add_special_tokens=False)
 
 
 def generate(model, tokenizer, inputs) -> str:
-    """Generate a response from the model and return the decoded answer only."""
+    """Generate an answer from the model and return the decoded answer only."""
     inputs = inputs.to(model.device)
     with torch.no_grad():
-        # generate with greedy decoding (do_sample=False) to keep the outputs deterministic
+        # Generate with greedy decoding (do_sample=False) to keep the outputs deterministic
         output = model.generate(**inputs, do_sample=False, max_new_tokens=256)
-    # return only the answer (generate returns prompt and answer)
+    # Return only the answer (generate returns prompt and answer)
     new_tokens = output[0, inputs["input_ids"].shape[1]:]
     return tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
@@ -63,8 +65,8 @@ def generate(model, tokenizer, inputs) -> str:
 def main():
     device = pick_device()
     print(f"Loading {MODEL_ID} in float32 on {device}")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=torch.float32).to(device).eval()
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=MODEL_REVISION)
+    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, revision=MODEL_REVISION, dtype=torch.float32).to(device).eval()
     print(f"{model.num_parameters() / 1e9:.2f}B parameters")
 
     report = [f"{MODEL_ID}: greedy decoding with float32 on {device}.\n"]

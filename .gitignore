@@ -3,6 +3,7 @@
 CLAUDE.md
 wandb/
 outputs/
+experiments/compare_bos_token_output.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
